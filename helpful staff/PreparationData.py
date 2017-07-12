@@ -21,13 +21,13 @@ df = web.DataReader(stock_name, 'google', start, end)
 
 #-------------- UNCOMENT THIS SECTION TO WATCH  HOW EVERITHIN WORK'S -----------------------------------------------
 # creates CSV file with all imported data from /google.com
-df.to_csv('C:/Users/dleshko/Desktop/Private/CS_PR/helpful_stuff/intc.csv')
+df.to_csv('C:/Users/dleshko/Desktop/Private/CS_PR/CandleStick_Patterns/helpful staff/intc.csv')
 # we can read the CSV file with our preferences
 # here is documentation for this  function
 # https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
 #< example > data = pd.read_csv('C:/TestProgram/data.csv' ,parse_dates = True ,index_col = 0 )
 #now we can read CSV file into DATA_FRAME variable
-dframe = pd.read_csv('C:/Users/dleshko/Desktop/Private/CS_PR/helpful_stuff/intc.csv' )
+dframe = pd.read_csv('C:/Users/dleshko/Desktop/Private/CS_PR/CandleStick_Patterns/helpful staff/intc.csv' )
 # not necessary create csv file, with dframe = df we can work with data directly
 # NOW WE CAN USE VARIABLE 'DFRAME' TO MANIPULATE THE STOCK DATA
 #< example > we can add and evaluate aditional column named 'Average' to data frame
@@ -39,7 +39,7 @@ print(dframe.tail(10))
 
 # <editor-fold desc="Here some various graphs that we can draw">
 #once we have CSV file read it is faster than download all data from web
-dframe = pd.read_csv('C:/Users/dleshko/Desktop/CandleStick_Patterns/intc.csv')
+dframe = pd.read_csv('C:/Users/dleshko/Desktop/Private/CS_PR/CandleStick_Patterns/helpful staff/intc.csv')
 
 #--------------------- REMOVE COMENTS TO VIEW PLOT EXAMPLES---------------------------------------------------------
 # this is how pandas is creating a graph
