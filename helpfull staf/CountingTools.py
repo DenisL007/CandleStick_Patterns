@@ -26,10 +26,9 @@ class Tools_cl(object):
         '''возможнось добавлять новые МА столько сколько хочешь,а  при изменении периода - обновлять существующую '''
 
     def moving_average(self):
-        self._issuer_list['MA'] = Series.rolling(self._issuer_list['Close'], window=self._ma_period,
-                                                 min_periods=self._ma_period).mean()
+        self._issuer_list['MA'] = Series.rolling(self._issuer_list['Close'], window=self._ma_period, min_periods=self._ma_period).mean()
         print(1)
-'''
+
     def ma_linear_regression(self):
         y = arange(float(self.lr_period))
         for index in range((self.ma_period - 1), len(self.issuer_list) - self.lr_period + 1,
@@ -75,6 +74,9 @@ class Tools_cl(object):
     def local_max(self):
         pass
 
+    def gap_finder(selfself):
+        pass
+
     def hammer(self):
         self.issuer_list['Hammer'] = 'False'
         umbrella_index = self.issuer_list.loc[(self.issuer_list.Umbrella == 'True')].index.tolist()
@@ -97,10 +99,31 @@ class Tools_cl(object):
                         self.issuer_list.set_value([index + 1], 'Hanging Man', 'HMA')
                         self.issuer_list.set_value([index], 'Hanging Man', 'HM')
                         self.issuer_list.set_value([index - 1], 'Hanging Man', 'HMB')
-'''
 
 
+    def support_resistance_level_analysis(self):
+        pass
 
+    def price_level_analysis(self):
+       pass
+
+    def min_price_analysis(self):
+        pass
+
+    def max_price_analysis(self):
+        pass
+
+    def candle_size_analysis(self):
+        pass
+
+    def p_ma_d_trend_analysis(self):
+        pass
+
+    def lr_trend_analysis(self):
+        pass
+
+    def ma_d_trend_analysis(self):
+        pass
 
 def main():
 
