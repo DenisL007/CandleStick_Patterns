@@ -6,27 +6,27 @@ from numpy import arange
 class Tools_cl(object):
 
     def __init__(self,file,ma_period=1,lr_period=2):
-        self._file = file
-        self._ma_period = ma_period
-        self._lr_period = lr_period
-        self._hammer_trend_slope = 0.087
-        self._issuer_list = read_csv(self._file)
+        self.file = file
+        self.ma_period = ma_period
+        self.lr_period = lr_period
+        self.hammer_trend_slope = 0.087
+        self.issuer_list = read_csv(self.file)
         self.moving_average()
-        print(self._issuer_list)
+        print(self.issuer_list)
         # self.ma_linear_regression()
         # self.umbrella_candle()
         # self.hammer()
         # self.hanging_man()
-        self._issuer_list.to_csv('issuer_list.csv')
+        self.issuer_list.to_csv('issuer_list.csv')
 
     def get_moving_average_period(self, ma_period):
-        self._ma_period = ma_period
+        self.ma_period = ma_period
         self.moving_average()
-        print(self._issuer_list)
+        print(self.issuer_list)
         '''возможнось добавлять новые МА столько сколько хочешь,а  при изменении периода - обновлять существующую '''
 
     def moving_average(self):
-        self._issuer_list['MA'] = Series.rolling(self._issuer_list['Close'], window=self._ma_period, min_periods=self._ma_period).mean()
+        self.issuer_list['MA'] = Series.rolling(self.issuer_list['Close'], window=self.ma_period, min_periods=self.ma_period).mean()
         print(1)
 
     def ma_linear_regression(self):
