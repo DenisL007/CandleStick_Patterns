@@ -1,6 +1,7 @@
 import os
 
-from pull_data import ImportDataFrame
+# pay attention for how the  import need to be done
+from candlestick_patterns.pull_data import ImportDataFrame
 
 if __name__ == '__main__':
     # make sure that not all the names from data sheet file are working correctly
@@ -22,4 +23,4 @@ if __name__ == '__main__':
 
     data_frame = ImportDataFrame(list[0])
     # thats how you access to data frame
-    print(data_frame.df)
+    print(data_frame.get_last_year())
