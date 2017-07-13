@@ -1,9 +1,12 @@
 #!/usr/bin/python3
-from pandas import Series, read_csv, value_counts
+from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
-from numpy import arange
+from numpy import arange,linspace
+import matplotlib.pyplot as plt
+
 
 class Tools_cl(object):
+
 
     def __init__(self,file,ma_period=1,lr_period=2):
         self.file = file
@@ -11,14 +14,27 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.issuer_list = read_csv(self.file)
-        #self.moving_average()
-        self.price_level_analysis()
+        self.candle_size_analysis()
         #print(self.issuer_list)
         # self.ma_linear_regression()
         # self.umbrella_candle()
         # self.hammer()
         # self.hanging_man()
         #self.issuer_list.to_csv('issuer_list.csv')
+
+#how much cs at each price level
+    def price_level_analysis(self):
+        pass
+
+# cs size histogram
+    def candle_size_analysis(self):
+
+        cs_size = (self.issuer_list.High - self.issuer_list.Low)
+        cs_size.to_csv('his.csv')
+        bins = max(cs_size)*100
+        cs_size.hist(bins=int(bins))
+        plt.show()
+
 
     def get_moving_average_period(self, ma_period):
         self.ma_period = ma_period
@@ -28,7 +44,6 @@ class Tools_cl(object):
 
     def moving_average(self):
         self.issuer_list['MA'] = Series.rolling(self.issuer_list['Close'], window=self.ma_period, min_periods=self.ma_period).mean()
-        print(1)
 
     def ma_linear_regression(self):
         y = arange(float(self.lr_period))
@@ -105,21 +120,12 @@ class Tools_cl(object):
     def support_resistance_level_analysis(self):
         pass
 
-    def price_level_analysis(self,resolution=1):
-        histo = value_counts(self.issuer_list)
-        print(self.issuer_list)
-        print(histo)
-
-
-
     def min_price_analysis(self):
         pass
 
     def max_price_analysis(self):
         pass
 
-    def candle_size_analysis(self):
-        pass
 
     def p_ma_d_trend_analysis(self):
         pass
@@ -130,8 +136,9 @@ class Tools_cl(object):
     def ma_d_trend_analysis(self):
         pass
 
+
 def main():
 
-    a = Tools_cl('intc.csv', 10, 5)
+    a = Tools_cl('intc.csv')
 
 if __name__ == "__main__": main()
