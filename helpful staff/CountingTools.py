@@ -15,6 +15,8 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.issuer_list = read_csv(self.file)
         self.candle_size_analysis()
+        self.define_long_candlestick()
+        self.define_short_candlestick()
         #print(self.issuer_list)
         # self.ma_linear_regression()
         # self.umbrella_candle()
@@ -26,15 +28,32 @@ class Tools_cl(object):
     def price_level_analysis(self):
         pass
 
-# cs size histogram
     def candle_size_analysis(self):
+        self.issuer_list['Size'] = abs((self.issuer_list.Open - self.issuer_list.Close).round(decimals=2))  #count candle size (need to round - pandas have a bug)
+        minSize = min(self.issuer_list.Size)
+        maxSize = max(self.issuer_list.Size)
+        totalSize = len(self.issuer_list.Size)
+        hist_data = self.issuer_list.Size.value_counts()  # prepare histogram data
+        hist_data = hist_data.sort_index()
+        df = hist_data.to_frame().reset_index()  # pass Series to DF
+        df.columns=['Size','Count']
+        df['% of total']= ((df.Count/totalSize)*float(100)).round(decimals=3)  # calculate % for each size from total
+        df.to_csv('candle_size_analysis.csv')
 
-        cs_size = (self.issuer_list.High - self.issuer_list.Low)
-        cs_size.to_csv('his.csv')
-        bins = max(cs_size)*100
-        cs_size.hist(bins=int(bins))
-        plt.show()
+    def define_long_candlestick(self,long_cs_period = 5):
+        self.issuer_list['Long_CS'] = ''
+        avrSize = Series.rolling(self.issuer_list.Size, window=long_cs_period, min_periods=long_cs_period).mean()  # count average SIZE for period
+        for index in range(len(avrSize)):       # if current cs_size greater that avr Size add "LCS" to dataframe
+            if(self.issuer_list.Size[index] > 1.3*avrSize[index]):
+                self.issuer_list.set_value(index,'Long_CS','LCS')
+        #print(self.issuer_list.Long_CS.value_counts())
 
+    def define_short_candlestick(self,short_cs_period = 15):
+        self.issuer_list['Short_CS'] = ''
+        avrSize = Series.rolling(self.issuer_list.Size, window=short_cs_period, min_periods=short_cs_period).mean()  # count average SIZE for period
+        for index in range(len(avrSize)):
+            if(self.issuer_list.Size[index] < 0.51*avrSize[index]):# if current cs_size less that avr Size add "SCS" to dataframe
+                self.issuer_list.set_value(index,'Short_CS','SCS')
 
     def get_moving_average_period(self, ma_period):
         self.ma_period = ma_period
@@ -126,7 +145,6 @@ class Tools_cl(object):
     def max_price_analysis(self):
         pass
 
-
     def p_ma_d_trend_analysis(self):
         pass
 
@@ -140,5 +158,7 @@ class Tools_cl(object):
 def main():
 
     a = Tools_cl('intc.csv')
+    a.ma_period = 10
+
 
 if __name__ == "__main__": main()
