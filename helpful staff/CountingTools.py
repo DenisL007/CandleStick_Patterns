@@ -14,6 +14,7 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.issuer_list = read_csv(self.file)
+        print(self.issuer_list)
         self.candle_size_analysis()
         self.define_long_candlestick()
         self.define_short_candlestick()

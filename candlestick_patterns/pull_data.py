@@ -9,11 +9,13 @@ class ImportDataFrame():
     year = None
     end = dt.datetime.today()
 
+    #TODO - add index column to dataframe
+
     def __init__(self, stock_id):
         self.stock_name = stock_id
         # create a DATA FRAME  with values from google finance  from year 2000 till today
-        self.df = web.DataReader(self.stock_name, 'google', self.start, self.end)
+        self.il = web.DataReader(self.stock_name, 'google', self.start, self.end)
 
     # this function returns data_frame with data from last year only
     def get_last_year(self):
-        print(self.df.last_valid_index())
+        print(self.il.last_valid_index())

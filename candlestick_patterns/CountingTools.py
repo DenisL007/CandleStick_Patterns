@@ -8,15 +8,14 @@ import matplotlib.pyplot as plt
 class Tools_cl(object):
 
 
-    def __init__(self,file,ma_period=1,lr_period=2):
-        self.file = file
+    def __init__(self,data_frame,ma_period=1,lr_period=2):
         self.ma_period = ma_period
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
-        self.issuer_list = read_csv(self.file)
+        self.issuer_list = data_frame
         self.candle_size_analysis()
         self.define_long_candlestick()
-        self.define_short_candlestick()
+        #self.define_short_candlestick()
         #print(self.issuer_list)
         # self.ma_linear_regression()
         # self.umbrella_candle()
@@ -46,7 +45,6 @@ class Tools_cl(object):
         for index in range(len(avrSize)):       # if current cs_size greater that avr Size add "LCS" to dataframe
             if(self.issuer_list.Size[index] > 1.3*avrSize[index]):
                 self.issuer_list.set_value(index,'Long_CS','LCS')
-        #print(self.issuer_list.Long_CS.value_counts())
 
     def define_short_candlestick(self,short_cs_period = 15):
         self.issuer_list['Short_CS'] = ''
