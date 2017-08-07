@@ -14,7 +14,7 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.issuer_list = data_frame
         self.candle_size_analysis()
-        self.define_long_candlestick()
+        #self.define_long_candlestick()
         #self.define_short_candlestick()
         #print(self.issuer_list)
         # self.ma_linear_regression()
@@ -23,8 +23,10 @@ class Tools_cl(object):
         # self.hanging_man()
         #self.issuer_list.to_csv('issuer_list.csv')
 
-#how much cs at each price level
-    def price_level_analysis(self):
+    def one_ma_cross_trend_detection(self):
+        pass
+
+    def price_level_analysis(self):#how much cs at each price level
         pass
 
     def candle_size_analysis(self):
@@ -146,11 +148,3 @@ class Tools_cl(object):
     def ma_d_trend_analysis(self):
         pass
 
-
-def main():
-
-    a = Tools_cl('intc.csv')
-    a.ma_period = 10
-
-
-if __name__ == "__main__": main()

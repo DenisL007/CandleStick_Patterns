@@ -4,6 +4,9 @@ import os
 from candlestick_patterns.pull_data import ImportDataFrame
 from candlestick_patterns.CountingTools import Tools_cl
 
+#TODO - GUI for browser
+#TODO - GUI(plot - bokeh) - for different trend definition "https://www.mql5.com/en/articles/136"
+
 if __name__ == '__main__':
     # make sure that not all the names from data sheet file are working correctly
     stock_names = {1: ['MMM', '3M Co.'],
