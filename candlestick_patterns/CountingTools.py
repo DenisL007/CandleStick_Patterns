@@ -13,9 +13,9 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
-        self.moving_average(200)
+        #self.moving_average(200)
         self.one_ma_cross_trend_detection()
-        #self.candle_size_analysis()
+       #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
         #print(self.issuer_list)
@@ -26,11 +26,24 @@ class Tools_cl(object):
         #self.issuer_list.to_csv('issuer_list.csv')
 
     def one_ma_cross_trend_detection(self,period=200):
-        ma_name = 'MA_{period}'.format(period=period)
-        if(ma_name in self.df):
-            pass
-        else:
-            self.moving_average(period)
+#        ma_name = 'MA_{period}'.format(period=period)
+#        if(ma_name in self.df):
+#            pass
+#        else:
+#            self.moving_average(period)
+        self.df['One_MA'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
+        self.df['O_ma_CTD'] = 0
+        for index in self.df.index:
+            if self.df.Close[index] > self.df.One_MA[index]:
+                self.df.O_ma_CTD = 1
+            if self.df.Close[index] < self.df.One_MA[index]:
+                self.df.O_ma_CTD = -1
+
+
+
+
+
+
 
 
 

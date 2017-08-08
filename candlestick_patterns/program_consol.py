@@ -29,4 +29,4 @@ if __name__ == '__main__':
     data_frame = ImportDataFrame(list[0])
     intc = Tools_cl(data_frame.il)
     # thats how you access to data frame
-    print(data_frame.il)
+    #print(data_frame.il)
