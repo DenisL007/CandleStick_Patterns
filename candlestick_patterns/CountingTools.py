@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
-from numpy import arange,linspace
+from numpy import arange,linspace, where,diff,concatenate,savetxt
 import matplotlib.pyplot as plt
 
 
@@ -23,31 +23,19 @@ class Tools_cl(object):
         # self.umbrella_candle()
         # self.hammer()
         # self.hanging_man()
-        #self.issuer_list.to_csv('issuer_list.csv')
+        print(self.df)
+        self.df.to_csv('df.csv')
 
-    def one_ma_cross_trend_detection(self,period=200):
-#        ma_name = 'MA_{period}'.format(period=period)
-#        if(ma_name in self.df):
-#            pass
-#        else:
-#            self.moving_average(period)
-        self.df['One_MA'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
-        self.df['O_ma_CTD'] = 0
-        for index in self.df.index:
-            if self.df.Close[index] > self.df.One_MA[index]:
-                self.df.O_ma_CTD = 1
-            if self.df.Close[index] < self.df.One_MA[index]:
-                self.df.O_ma_CTD = -1
-
-
-
-
-
-
-
-
-
-
+    def one_ma_cross_trend_detection(self,period=200):#omcrtd
+        self.df['omcrtd_ma'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean() # can be changed to EMA
+        self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
+        self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
+        omcrtd_trend = self.df['omcrtd_trend']
+        min_signal = 2
+        bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
+        bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
+        self.df['omcrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
 
     def price_level_analysis(self):#how much cs at each price level
         pass
