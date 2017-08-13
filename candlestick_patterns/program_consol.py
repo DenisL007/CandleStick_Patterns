@@ -20,12 +20,12 @@ if __name__ == '__main__':
     for key in stock_names:
         print(stock_names[key])
     print('\nWELCOME TO THE PROGRAM \n')
-    kString = input(
-    print('Please select from the list below by enter the key value\n'))
-    k = int(kString)
+    #kString = input(
+    #print('Please select from the list below by enter the key value\n'))
+    #k = int(kString)
     # a single key in a dictionary can refer to only a single value so create a list to get access for first value
-    list = stock_names[k]
-
+    #list = stock_names[k]
+    list = stock_names[5]
     data_frame = ImportDataFrame(list[0])
     intc = Tools_cl(data_frame.il)
     # thats how you access to data frame

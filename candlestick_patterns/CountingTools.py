@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all
+from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros
 import matplotlib.pyplot as plt
 
 
@@ -26,12 +26,11 @@ class Tools_cl(object):
         print(self.df)
         self.df.to_csv('df.csv')
 
-    def one_ma_cross_trend_detection(self,period=200):#omcrtd
+    def one_ma_cross_trend_detection(self,period=200,min_days_trend=2):#omcrtd
         self.df['omcrtd_ma'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean() # can be changed to EMA
         self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
         self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
         omcrtd_trend = self.df['omcrtd_trend']
-        min_days_trend = 2
         bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
         bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
         self.df['omcrtd_bounds'] = bounds
@@ -42,6 +41,24 @@ class Tools_cl(object):
             relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
         if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
             relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
+        temp_array = zeros(len(self.df),dtype=bool)
+        for index in range (len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['omcrtd_relevant_bounds'] = temp_array
+        # Iterate segments + plot
+        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
+        #    # Slice segment
+        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
+        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
+        #    # Plot data
+        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
+        #    plt.plot(segment.index, segment['Close'], color=data_color)
+        #    # Plot fit
+        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
+        #    fit_val = coef * x + intercept
+        #    fit_color = 'yellow' if coef > 0 else 'blue'
+        #    plt.plot(segment.index, fit_val, color=fit_color)
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
