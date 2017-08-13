@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt
+from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all
 import matplotlib.pyplot as plt
 
 
@@ -31,11 +31,17 @@ class Tools_cl(object):
         self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
         self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
         omcrtd_trend = self.df['omcrtd_trend']
-        min_signal = 2
+        min_days_trend = 2
         bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
         bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
         self.df['omcrtd_bounds'] = bounds
         bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcrtd_trend[idx] == omcrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
 
     def price_level_analysis(self):#how much cs at each price level
         pass
