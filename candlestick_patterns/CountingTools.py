@@ -59,6 +59,8 @@ class Tools_cl(object):
         #    fit_color = 'yellow' if coef > 0 else 'blue'
         #    plt.plot(segment.index, fit_val, color=fit_color)
 
+    def tree_ma_cross_trend_detection(self,pshort=20,pmedium=50,plong=200,min_days_trend=2):
+        pass
 
     def price_level_analysis(self):#how much cs at each price level
         pass
