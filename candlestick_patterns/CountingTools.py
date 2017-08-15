@@ -28,6 +28,7 @@ class Tools_cl(object):
 
     def one_ma_cross_trend_detection(self,period=200,min_days_trend=2):#omcrtd
         self.df['omcrtd_ma'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean() # can be changed to EMA
+        #self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
         self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
         self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
         omcrtd_trend = self.df['omcrtd_trend']
