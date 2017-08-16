@@ -15,6 +15,7 @@ class Tools_cl(object):
         self.df = data_frame
         #self.moving_average(200)
         self.one_ma_cross_trend_detection()
+        self.tree_ma_cross_trend_detection()
        #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -26,11 +27,12 @@ class Tools_cl(object):
         print(self.df)
         self.df.to_csv('df.csv')
 
-    def one_ma_cross_trend_detection(self,period=200,min_days_trend=2):#omcrtd
+    def one_ma_cross_trend_detection(self,period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
         self.df['omcrtd_ma'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean() # can be changed to EMA
         #self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
         self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
         self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
+        #find trend change point
         omcrtd_trend = self.df['omcrtd_trend']
         bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
         bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
@@ -42,6 +44,7 @@ class Tools_cl(object):
             relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
         if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
             relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
+        # write data to dataframe
         temp_array = zeros(len(self.df),dtype=bool)
         for index in range (len(relevant_bounds_idx)):
             temp_array[relevant_bounds_idx[index]] = 'True'
@@ -60,8 +63,34 @@ class Tools_cl(object):
         #    fit_color = 'yellow' if coef > 0 else 'blue'
         #    plt.plot(segment.index, fit_val, color=fit_color)
 
-    def tree_ma_cross_trend_detection(self,pshort=20,pmedium=50,plong=200,min_days_trend=2):
-        pass
+    def tree_ma_cross_trend_detection(self,p_s=20,p_m=50,p_l=200,min_days_trend=2): #min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['tmcrtd_ma_l'] = Series.rolling(self.df['Close'], window=p_l, min_periods=p_l).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_m'] = Series.rolling(self.df['Close'], window=p_m, min_periods=p_m).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_s'] = Series.rolling(self.df['Close'], window=p_s, min_periods=p_s).mean() # can be changed to EMA
+        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] > self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] > self.df['tmcrtd_ma_l'])),1,0)
+        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] < self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] < self.df['tmcrtd_ma_l'])),-1,self.df['tmcrtd_trend'])
+        tmcrtd_trend = self.df['tmcrtd_trend']
+        #find trend change point
+        bounds = (diff(tmcrtd_trend) != 0) & (tmcrtd_trend[1:] != 0)
+        bounds = concatenate(([tmcrtd_trend[0] != 0], bounds))
+        self.df['tmcrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array(
+            [idx for idx in bounds_idx if all(tmcrtd_trend[idx] == tmcrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(tmcrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(tmcrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df), dtype=bool)
+        for index in range(len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['tmcrtd_relevant_bounds'] = temp_array
+
+
+
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
