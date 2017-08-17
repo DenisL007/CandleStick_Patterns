@@ -25,7 +25,7 @@ if __name__ == '__main__':
     #k = int(kString)
     # a single key in a dictionary can refer to only a single value so create a list to get access for first value
     #list = stock_names[k]
-    list = stock_names[5]
+    list = "INTC"
     data_frame = ImportDataFrame(list[0])
     intc = Tools_cl(data_frame.il)
     # thats how you access to data frame
