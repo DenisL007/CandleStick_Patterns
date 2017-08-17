@@ -88,8 +88,8 @@ class Tools_cl(object):
             temp_array[relevant_bounds_idx[index]] = 'True'
         self.df['tmcrtd_relevant_bounds'] = temp_array
 
-    def zigzig_trend_detection(self):
-        pass
+    def zigzig_trend_detection(self,source='Close'):
+
 
 
 
