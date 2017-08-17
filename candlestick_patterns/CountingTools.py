@@ -3,7 +3,8 @@ from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
 from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros
 import matplotlib.pyplot as plt
-
+from math import pi
+from bokeh.plotting import figure, show, output_file
 
 class Tools_cl(object):
 
@@ -13,10 +14,11 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
+        self.df_plot()
         #self.moving_average(200)
-        self.one_ma_cross_trend_detection()
-        self.tree_ma_cross_trend_detection()
-       #self.candle_size_analysis()
+        #self.one_ma_cross_trend_detection()
+        #self.tree_ma_cross_trend_detection()
+        #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
         #print(self.issuer_list)
@@ -26,6 +28,29 @@ class Tools_cl(object):
         # self.hanging_man()
         print(self.df)
         self.df.to_csv('df.csv')
+
+    def df_plot(self):
+        mids = (self.df.Open + self.df.Close) / 2
+        spans = abs(self.df.Close - self.df.Open)
+
+        inc = self.df.Close > self.df.Open
+        dec = self.df.Open > self.df.Close
+        w = 12 * 60 * 60 * 1000  # half day in ms
+        output_file("candlestick.html", title="candlestick.py example")
+
+        TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+
+        p = figure(x_axis_type="datetime", tools=TOOLS, plot_width=1800, plot_height=1100, toolbar_location="right")
+
+        p.segment(self.df.index, self.df.High, self.df.index, self.df.Low, color="black")
+        p.rect(self.df.index[inc], mids[inc], w, spans[inc], fill_color="#D5E1DD", line_color="black")
+        p.rect(self.df.index[dec], mids[dec], w, spans[dec], fill_color="#F2583E", line_color="black")
+
+        p.title.text = "Intel Candlestick"
+        #p.xaxis.major_label_orientation = pi /4
+        p.grid.grid_line_alpha = 0.7
+
+        show(p)  # open a browser
 
     def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
         self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
@@ -89,7 +114,7 @@ class Tools_cl(object):
         self.df['tmcrtd_relevant_bounds'] = temp_array
 
     def zigzig_trend_detection(self,source='Close'):
-
+        pass
 
 
 
