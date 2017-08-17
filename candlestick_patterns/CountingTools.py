@@ -27,11 +27,11 @@ class Tools_cl(object):
         print(self.df)
         self.df.to_csv('df.csv')
 
-    def one_ma_cross_trend_detection(self,period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
-        self.df['omcrtd_ma'] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean() # can be changed to EMA
+    def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
         #self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
-        self.df['omcrtd_trend'] = where(self.df['Close'] > self.df['omcrtd_ma'], 1, 0)
-        self.df['omcrtd_trend'] = where(self.df['Close'] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
+        self.df['omcrtd_trend'] = where(self.df[source] > self.df['omcrtd_ma'], 1, 0)
+        self.df['omcrtd_trend'] = where(self.df[source] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
         #find trend change point
         omcrtd_trend = self.df['omcrtd_trend']
         bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
@@ -63,10 +63,10 @@ class Tools_cl(object):
         #    fit_color = 'yellow' if coef > 0 else 'blue'
         #    plt.plot(segment.index, fit_val, color=fit_color)
 
-    def tree_ma_cross_trend_detection(self,p_s=20,p_m=50,p_l=200,min_days_trend=2): #min_days_trend - minimum days with specific trend direction to count as trend change
-        self.df['tmcrtd_ma_l'] = Series.rolling(self.df['Close'], window=p_l, min_periods=p_l).mean() # can be changed to EMA
-        self.df['tmcrtd_ma_m'] = Series.rolling(self.df['Close'], window=p_m, min_periods=p_m).mean() # can be changed to EMA
-        self.df['tmcrtd_ma_s'] = Series.rolling(self.df['Close'], window=p_s, min_periods=p_s).mean() # can be changed to EMA
+    def tree_ma_cross_trend_detection(self,source='Close',p_s=20,p_m=50,p_l=200,min_days_trend=2): #min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['tmcrtd_ma_l'] = Series.rolling(self.df[source], window=p_l, min_periods=p_l).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_m'] = Series.rolling(self.df[source], window=p_m, min_periods=p_m).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_s'] = Series.rolling(self.df[source], window=p_s, min_periods=p_s).mean() # can be changed to EMA
         self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] > self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] > self.df['tmcrtd_ma_l'])),1,0)
         self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] < self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] < self.df['tmcrtd_ma_l'])),-1,self.df['tmcrtd_trend'])
         tmcrtd_trend = self.df['tmcrtd_trend']
@@ -166,7 +166,6 @@ class Tools_cl(object):
         pass
 
     def local_min(self,price='Close',period=5):
-
         pass
 
     def local_max(self):
