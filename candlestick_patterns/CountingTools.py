@@ -3,8 +3,7 @@ from pandas import Series, read_csv, Series, DataFrame, value_counts
 from scipy import stats
 from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros
 import matplotlib.pyplot as plt
-from math import pi
-from bokeh.plotting import figure, show, output_file
+
 
 class Tools_cl(object):
 
@@ -14,7 +13,7 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
-        self.df_plot()
+        #self.plot_candles(self.df)
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -29,28 +28,67 @@ class Tools_cl(object):
         print(self.df)
         self.df.to_csv('df.csv')
 
-    def df_plot(self):
-        mids = (self.df.Open + self.df.Close) / 2
-        spans = abs(self.df.Close - self.df.Open)
+    def plot_candles(pricing, title=None, volume_bars=False, color_function=None, technicals=None):
+        """
+        Args:
+          pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
+          title: An optional title for the chart
+          volume_bars: If True, plots volume bars
+          color_function: A function which, given a row index and price series, returns a candle color.
+          technicals: A list of additional data series to add to the chart.  Must be the same length as pricing.
+        """
 
-        inc = self.df.Close > self.df.Open
-        dec = self.df.Open > self.df.Close
-        w = 12 * 60 * 60 * 1000  # half day in ms
-        output_file("candlestick.html", title="candlestick.py example")
+        def default_color(index, Open, Close, Low, High):
+            return 'r' if Open[index] > Close[index] else 'g'
 
-        TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
+        color_function = color_function or default_color
+        technicals = technicals or []
+        open_price = pricing['Open']
+        close_price = pricing['Close']
+        low = pricing['Low']
+        high = pricing['High']
+        oc_min = pd.concat([open_price, close_price], axis=1).min(axis=1)
+        oc_max = pd.concat([open_price, close_price], axis=1).max(axis=1)
 
-        p = figure(x_axis_type="datetime", tools=TOOLS, plot_width=1800, plot_height=1100, toolbar_location="right")
+        if volume_bars:
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+        else:
+            fig, ax1 = plt.subplots(1, 1)
+        if title:
+            ax1.set_title(title)
+        x = np.arange(len(pricing))
+        candle_colors = [color_function(i, open_price, close_price, low, high) for i in x]
+        candles = ax1.bar(x, oc_max - oc_min, bottom=oc_min, color=candle_colors, linewidth=0)
+        lines = ax1.vlines(x + 0.4, low, high, color=candle_colors, linewidth=1)
+        ax1.xaxis.grid(False)
+        ax1.xaxis.set_tick_params(which='major', length=3.0, direction='in', top='off')
+        # Assume minute frequency if first two bars are in the same day.
+        frequency = 'minute' if (pricing.index[1] - pricing.index[0]).days == 0 else 'day'
+        time_format = '%d-%m-%Y'
+        if frequency == 'minute':
+            time_format = '%H:%M'
+        # Set X axis tick labels.
+        plt.xticks(x, [date.strftime(time_format) for date in pricing.index], rotation='vertical')
+        for indicator in technicals:
+            ax1.plot(x, indicator)
 
-        p.segment(self.df.index, self.df.High, self.df.index, self.df.Low, color="black")
-        p.rect(self.df.index[inc], mids[inc], w, spans[inc], fill_color="#D5E1DD", line_color="black")
-        p.rect(self.df.index[dec], mids[dec], w, spans[dec], fill_color="#F2583E", line_color="black")
+        if volume_bars:
+            volume = pricing['volume']
+            volume_scale = None
+            scaled_volume = volume
+            if volume.max() > 1000000:
+                volume_scale = 'M'
+                scaled_volume = volume / 1000000
+            elif volume.max() > 1000:
+                volume_scale = 'K'
+                scaled_volume = volume / 1000
+            ax2.bar(x, scaled_volume, color=candle_colors)
+            volume_title = 'Volume'
+            if volume_scale:
+                volume_title = 'Volume (%s)' % volume_scale
+            ax2.set_title(volume_title)
+            ax2.xaxis.grid(False)
 
-        p.title.text = "Intel Candlestick"
-        #p.xaxis.major_label_orientation = pi /4
-        p.grid.grid_line_alpha = 0.7
-
-        show(p)  # open a browser
 
     def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
         self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
