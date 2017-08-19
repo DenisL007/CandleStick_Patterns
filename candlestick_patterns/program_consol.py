@@ -5,6 +5,7 @@ from candlestick_patterns.pull_data import ImportDataFrame
 from candlestick_patterns.CountingTools import Tools_cl
 
 #TODO - GUI for browser
+#TODO - GUI(plot - bokeh) - for different trend definition "https://www.mql5.com/en/articles/136"
 
 if __name__ == '__main__':
     # make sure that not all the names from data sheet file are working correctly
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     # a single key in a dictionary can refer to only a single value so create a list to get access for first value
     #list = stock_names[k]
     list = "INTC"
-    data_frame = ImportDataFrame(list[0])
+    data_frame = ImportDataFrame(list)
     intc = Tools_cl(data_frame.il)
     # thats how you access to data frame
     #print(data_frame.il)

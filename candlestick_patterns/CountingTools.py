@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from pandas import Series, read_csv, Series, DataFrame, value_counts
+from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
 from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
-        #self.plot_candles(self.df)
+        self.plot_candles(pricing=self.df,title='Intc')
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -28,7 +28,7 @@ class Tools_cl(object):
         print(self.df)
         self.df.to_csv('df.csv')
 
-    def plot_candles(pricing, title=None, volume_bars=False, color_function=None, technicals=None):
+    def plot_candles(sefl,pricing, title=None, volume_bars=False, color_function=None, technicals=None):
         """
         Args:
           pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
@@ -36,6 +36,15 @@ class Tools_cl(object):
           volume_bars: If True, plots volume bars
           color_function: A function which, given a row index and price series, returns a candle color.
           technicals: A list of additional data series to add to the chart.  Must be the same length as pricing.
+
+          technicals:
+          SMA = talib.SMA(last_hour['close_price'].as_matrix())
+          plot_candles(last_hour, title='1 minute candles + SMA', technicals=[SMA])
+
+          color_function:
+          def highlight_dojis(index, open_price, close_price, low, high):
+          return 'm' if dojis[index] else 'k'
+          plot_candles(last_hour,title='Doji patterns highlighted',color_function=highlight_dojis)
         """
 
         def default_color(index, Open, Close, Low, High):
@@ -47,8 +56,8 @@ class Tools_cl(object):
         close_price = pricing['Close']
         low = pricing['Low']
         high = pricing['High']
-        oc_min = pd.concat([open_price, close_price], axis=1).min(axis=1)
-        oc_max = pd.concat([open_price, close_price], axis=1).max(axis=1)
+        oc_min = concat([open_price, close_price], axis=1).min(axis=1)
+        oc_max = concat([open_price, close_price], axis=1).max(axis=1)
 
         if volume_bars:
             fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
@@ -56,7 +65,7 @@ class Tools_cl(object):
             fig, ax1 = plt.subplots(1, 1)
         if title:
             ax1.set_title(title)
-        x = np.arange(len(pricing))
+        x = arange(len(pricing))
         candle_colors = [color_function(i, open_price, close_price, low, high) for i in x]
         candles = ax1.bar(x, oc_max - oc_min, bottom=oc_min, color=candle_colors, linewidth=0)
         lines = ax1.vlines(x + 0.4, low, high, color=candle_colors, linewidth=1)
@@ -73,7 +82,7 @@ class Tools_cl(object):
             ax1.plot(x, indicator)
 
         if volume_bars:
-            volume = pricing['volume']
+            volume = pricing['Volume']
             volume_scale = None
             scaled_volume = volume
             if volume.max() > 1000000:
@@ -88,6 +97,7 @@ class Tools_cl(object):
                 volume_title = 'Volume (%s)' % volume_scale
             ax2.set_title(volume_title)
             ax2.xaxis.grid(False)
+        plt.show()
 
 
     def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
