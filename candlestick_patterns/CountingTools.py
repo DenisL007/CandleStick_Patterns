@@ -13,7 +13,8 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
-        self.plot_candles(pricing=self.df,title='Intc')
+        self.moving_average(200)
+        self.plot_candles(pricing=self.df,title='Intc',technicals=self.df['MA_200'])
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -98,7 +99,6 @@ class Tools_cl(object):
             ax2.set_title(volume_title)
             ax2.xaxis.grid(False)
         plt.show()
-
 
     def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
         self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
