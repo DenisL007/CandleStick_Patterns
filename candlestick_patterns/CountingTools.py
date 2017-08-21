@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros
+from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,hstack
 import matplotlib.pyplot as plt
 
 
@@ -14,7 +14,7 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.df = data_frame
         self.moving_average(200)
-        self.plot_candles(pricing=self.df,title='Intc',technicals=self.df['MA_200'])
+        self.plot_candles(pricing=self.df,title='Intc',technicals=[self.df.MA_200])
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
