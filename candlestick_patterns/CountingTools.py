@@ -14,7 +14,7 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.df = data_frame
         self.moving_average(200)
-        self.plot_candles(pricing=self.df,title='Intc',technicals=[self.df.MA_200])
+        self.plot_candles(pricing=self.df,title='Intc',volume_bars=True,technicals=[self.df.MA_200])
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -69,7 +69,7 @@ class Tools_cl(object):
         x = arange(len(pricing))
         candle_colors = [color_function(i, open_price, close_price, low, high) for i in x]
         candles = ax1.bar(x, oc_max - oc_min, bottom=oc_min, color=candle_colors, linewidth=0)
-        lines = ax1.vlines(x + 0.4, low, high, color=candle_colors, linewidth=1)
+        lines = ax1.vlines(x + 0.0, low, high, color=candle_colors, linewidth=1)
         ax1.xaxis.grid(False)
         ax1.xaxis.set_tick_params(which='major', length=3.0, direction='in', top='off')
         # Assume minute frequency if first two bars are in the same day.
