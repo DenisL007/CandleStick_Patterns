@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,hstack
+from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,hstack,asarray,isfinite,interp,nan
 import matplotlib.pyplot as plt
 
 
@@ -14,7 +14,9 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.df = data_frame
         self.moving_average(200)
-        self.plot_candles(pricing=self.df,title='Intc',volume_bars=True,technicals=[self.df.MA_200])
+        self.one_ma_cross_trend_detection(period=20)
+        self.df.omcrtd_plot=self.df['omcrtd_plot'].interpolate()
+        self.plot_candles(pricing=self.df,title='Intc',technicals=[self.df.omcrtd_plot])
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -28,6 +30,7 @@ class Tools_cl(object):
         # self.hanging_man()
         print(self.df)
         self.df.to_csv('df.csv')
+
 
     def plot_candles(sefl,pricing, title=None, volume_bars=False, color_function=None, technicals=None):
         """
@@ -82,6 +85,8 @@ class Tools_cl(object):
         for indicator in technicals:
             ax1.plot(x, indicator)
 
+
+
         if volume_bars:
             volume = pricing['Volume']
             volume_scale = None
@@ -122,6 +127,8 @@ class Tools_cl(object):
         for index in range (len(relevant_bounds_idx)):
             temp_array[relevant_bounds_idx[index]] = 'True'
         self.df['omcrtd_relevant_bounds'] = temp_array
+        #self.df['omcrtd_plot'] = nan
+        self.df.loc[self.df['omcrtd_relevant_bounds'] == True , 'omcrtd_plot'] = self.df.Close
         # Iterate segments + plot
         #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
         #    # Slice segment
