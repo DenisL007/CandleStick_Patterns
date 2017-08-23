@@ -14,9 +14,10 @@ class Tools_cl(object):
         self.hammer_trend_slope = 0.087
         self.df = data_frame
         self.moving_average(200)
-        self.one_ma_cross_trend_detection(period=20)
-        self.df.omcrtd_plot=self.df['omcrtd_plot'].interpolate()
-        self.plot_candles(pricing=self.df,title='Intc',technicals=[self.df.omcrtd_plot])
+        self.one_ma_cross_trend_detection(period=50)
+        self.tree_ma_cross_trend_detection()
+        self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
+        self.plot_candles(pricing=self.df,title='Intc',mcrtd=True,technicals=[self.df.int_omcrtd_plot,self.df.omcrtd_ma])
         #self.moving_average(200)
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
@@ -32,7 +33,7 @@ class Tools_cl(object):
         self.df.to_csv('df.csv')
 
 
-    def plot_candles(sefl,pricing, title=None, volume_bars=False, color_function=None, technicals=None):
+    def plot_candles(sefl,pricing, title=None, volume_bars=False, mcrtd=False,color_function=None, technicals=None):
         """
         Args:
           pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
@@ -63,8 +64,10 @@ class Tools_cl(object):
         oc_min = concat([open_price, close_price], axis=1).min(axis=1)
         oc_max = concat([open_price, close_price], axis=1).max(axis=1)
 
-        if volume_bars:
-            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+        if (mcrtd):
+            fig, (ax1, ax3, ax4) = plt.subplots(3,1, sharex=True, gridspec_kw={'height_ratios': [3, 1, 1]})
+        elif volume_bars:
+            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
         else:
             fig, ax1 = plt.subplots(1, 1)
         if title:
@@ -85,7 +88,17 @@ class Tools_cl(object):
         for indicator in technicals:
             ax1.plot(x, indicator)
 
-
+        if mcrtd:
+            omcrtd = pricing['omcrtd_trend']
+            tmcrtd = pricing['tmcrtd_trend']
+            ax3.bar(x,omcrtd)
+            omcrtd_title = 'omcrtd'
+            ax3.set_title(omcrtd_title)
+            ax3.xaxis.grid(False)
+            ax4.bar(x,tmcrtd)
+            tmcrtd_title = 'tmcrtd'
+            ax4.set_title(tmcrtd_title)
+            ax4.xaxis.grid(False)
 
         if volume_bars:
             volume = pricing['Volume']
