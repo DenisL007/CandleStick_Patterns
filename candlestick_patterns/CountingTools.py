@@ -185,17 +185,17 @@ class Tools_cl(object):
     def zigzig_trend_detection(self):
         high, posh, low,posl = 0.0,0.0,0.0,0.0
         refp, refl = self.df.High[0], self.df.Low[0]
-        extp_f, extl_f = 1,1
-        extp, extl = 0.0, 0.0
+        exth_f, extl_f = 1,1
+        exth, extl = 0.0, 0.0
         index = 0
-        while (extp_f | extl_f):
-            if(self.df.High[index+1] > refp)&(exth != 0):
+        while (exth_f | extl_f):
+            if(self.df.High[index+1] > refp)&(exth == 0):
                 high,posh = self.df.High[index+1],index+1
                 refp = self.df.High[index+1]
                 print('h')
                 print(high)
                 print(posh)
-            if(self.df.Low[index+1] < refl)&(extl != 0):
+            if(self.df.Low[index+1] < refl)&(extl == 0):
                 low,posl = self.df.Low[index+1],index+1
                 refl = self.df.Low[index+1]
                 print('l')
