@@ -13,12 +13,13 @@ class Tools_cl(object):
         self.lr_period = lr_period
         self.hammer_trend_slope = 0.087
         self.df = data_frame
-        self.moving_average(200)
-        self.one_ma_cross_trend_detection(period=50)
-        self.tree_ma_cross_trend_detection()
-        self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
-        self.plot_candles(pricing=self.df,title='Intc',mcrtd=True,technicals=[self.df.int_omcrtd_plot,self.df.omcrtd_ma])
         #self.moving_average(200)
+        #self.one_ma_cross_trend_detection(period=50)
+        #self.tree_ma_cross_trend_detection()
+        #self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
+        #self.plot_candles(pricing=self.df,title='Intc',mcrtd=True,technicals=[self.df.int_omcrtd_plot,self.df.omcrtd_ma])
+        #self.moving_average(200)
+        self.zigzig_trend_detection()
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
         #self.candle_size_analysis()
@@ -181,8 +182,38 @@ class Tools_cl(object):
             temp_array[relevant_bounds_idx[index]] = 'True'
         self.df['tmcrtd_relevant_bounds'] = temp_array
 
-    def zigzig_trend_detection(self,source='Close'):
-        pass
+    def zigzig_trend_detection(self):
+        high, posh, low,posl = 0.0,0.0,0.0,0.0
+        refp, refl = self.df.High[0], self.df.Low[0]
+        extp_f, extl_f = 1,1
+        extp, extl = 0.0, 0.0
+        index = 0
+        while (extp_f | extl_f):
+            if(self.df.High[index+1] > refp)&(exth != 0):
+                high,posh = self.df.High[index+1],index+1
+                refp = self.df.High[index+1]
+                print('h')
+                print(high)
+                print(posh)
+            if(self.df.Low[index+1] < refl)&(extl != 0):
+                low,posl = self.df.Low[index+1],index+1
+                refl = self.df.Low[index+1]
+                print('l')
+                print(low)
+                print(posl)
+            if(low <= (1-0.05)*high):
+                    exth,exthpos= high,posh
+                    exth_f = 0
+                    print('exth')
+                    print(exth)
+                    print(exthpos)
+            if ((1+0.05)*low <= high):
+                    extl, extlpos = low, posl
+                    extl_f = 0
+                    print('extl')
+                    print(extl)
+                    print(extlpos)
+            index= index +1
 
 
 
