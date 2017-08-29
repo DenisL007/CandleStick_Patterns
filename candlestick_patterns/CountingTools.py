@@ -183,37 +183,42 @@ class Tools_cl(object):
         self.df['tmcrtd_relevant_bounds'] = temp_array
 
     def zigzig_trend_detection(self):
-        high, posh, low,posl = 0.0,0.0,0.0,0.0
-        refp, refl = self.df.High[0], self.df.Low[0]
-        exth_f, extl_f = 1,1
-        exth, extl = 0.0, 0.0
-        index = 0
-        while (exth_f | extl_f):
-            if(self.df.High[index+1] > refp)&(exth == 0):
-                high,posh = self.df.High[index+1],index+1
-                refp = self.df.High[index+1]
-                print('h')
-                print(high)
-                print(posh)
-            if(self.df.Low[index+1] < refl)&(extl == 0):
-                low,posl = self.df.Low[index+1],index+1
-                refl = self.df.Low[index+1]
-                print('l')
-                print(low)
-                print(posl)
-            if(low <= (1-0.05)*high):
-                    exth,exthpos= high,posh
-                    exth_f = 0
-                    print('exth')
-                    print(exth)
-                    print(exthpos)
-            if ((1+0.05)*low <= high):
-                    extl, extlpos = low, posl
-                    extl_f = 0
-                    print('extl')
-                    print(extl)
-                    print(extlpos)
-            index= index +1
+        high,low = ph[0],pl[0]
+        high2,low2 = 0.0,0.0
+        first_exth,first_extl = 0,0
+        second_low,secong_high = 0,0
+        next_iter_h, next_iter_l = 0,0
+        while(~first_exth & ~first_extl):
+            if(ph[i] > high): high,highp = ph[i],i
+            if(pl[i]<low): low,lowp = pl[i],i
+            if((lowp>highp) | (1-0.05)*high > low):#looking for second low
+                extl,extlp = low,lowp
+                while(~second_low | next_iter_h):
+                    if (pl[i+1] < low2): low2,lowp2=pl[i+1],i+1
+                    if(ph[i+1]>high): next_iter_h = 1#high,highp = ph[i+1],i+1
+                    if((lowp2 > highp) | (1 - 0.05) * high > low2):
+                        exth,exthp = high,highp
+                        first_exth = 1
+            if((highp>lowp) | (1+0.05)*low > high):#looking for second high
+                exth,exthp = high,ghip
+                while(~second_high | next_iter_l):
+                    if (ph[i + 1] > high2): high2,lowp2=ph[i+1],i+1
+                    if(pl[i+1]<low): next_iter_l = 1 #low,lowp = pl[i+1],i+1
+                    if((highp2 > lowp) | (1+0.05) * low > high2):
+                        extl,extlp = low,lowp
+                        first_extl = 0
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
