@@ -30,8 +30,8 @@ class Tools_cl(object):
         # self.umbrella_candle()
         # self.hammer()
         # self.hanging_man()
-        print(self.df)
-        self.df.to_csv('df.csv')
+#        print(self.df)
+#        self.df.to_csv('df.csv')
 
 
     def plot_candles(sefl,pricing, title=None, volume_bars=False, mcrtd=False,color_function=None, technicals=None):
@@ -183,30 +183,60 @@ class Tools_cl(object):
         self.df['tmcrtd_relevant_bounds'] = temp_array
 
     def zigzig_trend_detection(self):
-        high,low = ph[0],pl[0]
-        high2,low2 = 0.0,0.0
-        first_exth,first_extl = 0,0
-        second_low,secong_high = 0,0
-        next_iter_h, next_iter_l = 0,0
-        while(~first_exth & ~first_extl):
-            if(ph[i] > high): high,highp = ph[i],i
-            if(pl[i]<low): low,lowp = pl[i],i
-            if((lowp>highp) | (1-0.05)*high > low):#looking for second low
-                extl,extlp = low,lowp
-                while(~second_low | next_iter_h):
-                    if (pl[i+1] < low2): low2,lowp2=pl[i+1],i+1
-                    if(ph[i+1]>high): next_iter_h = 1#high,highp = ph[i+1],i+1
-                    if((lowp2 > highp) | (1 - 0.05) * high > low2):
-                        exth,exthp = high,highp
-                        first_exth = 1
-            if((highp>lowp) | (1+0.05)*low > high):#looking for second high
-                exth,exthp = high,ghip
-                while(~second_high | next_iter_l):
-                    if (ph[i + 1] > high2): high2,lowp2=ph[i+1],i+1
-                    if(pl[i+1]<low): next_iter_l = 1 #low,lowp = pl[i+1],i+1
-                    if((highp2 > lowp) | (1+0.05) * low > high2):
-                        extl,extlp = low,lowp
-                        first_extl = 0
+        pl=self.df.Low
+        ph=self.df.High
+        h,hp,l,lp=ph[0],0,pl[0],0
+        el,eh,elp,ehp = pl[0],ph[0],0,0
+        ehf,elf=1,1
+        for i in range(len(self.df)):
+            print()
+            print()
+            print(self.df.index[i])
+
+            #print('l-', l)
+            #print('h-', h)
+
+            if(ph[i]>h):
+                h,hp=ph[i],i
+                print('h-', h)
+            else:
+                print('hp-', hp)
+                print('lp-', lp)
+                if(pl[i]<l):
+                    l,lp=pl[i],i
+                    print('l-',l)
+                if ((0.95 * h > pl[i]) & ehf ):
+                    ehf,elf=0,1
+                    eh = h
+                    ehp=hp
+                    h, hp, l, lp = ph[i], i, pl[i], i
+                    print()
+                    print(self.df.index[i])
+                    print(self.df.index[ehp])
+                    print('   eh-', eh)
+                    print('h-', h)
+
+            if (pl[i] < l):
+                l,lp=pl[i],i
+                print('l-', l)
+            else:
+                print('hp-', hp)
+                print('lp-', lp)
+                if (ph[i] > h):
+                    h,hp=ph[i],i
+                    print('h-',h)
+                if ((1.05 * l < ph[i]) & elf):
+                    ehf, elf = 1, 0
+                    el = l
+                    elp=lp
+                    h, hp, l, lp = ph[i], i, pl[i], i
+                    print()
+                    print(self.df.index[i])
+                    print(self.df.index[elp])
+                    print('   el-', el)
+                    print('l-', l)
+
+
 
 
 
