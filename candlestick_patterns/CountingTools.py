@@ -19,7 +19,7 @@ class Tools_cl(object):
         #self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
         #self.plot_candles(pricing=self.df,title='Intc',mcrtd=True,technicals=[self.df.int_omcrtd_plot,self.df.omcrtd_ma])
         #self.moving_average(200)
-        self.zigzig_trend_detection()
+        self.zigzig_trend_detection1()
         #self.one_ma_cross_trend_detection()
         #self.tree_ma_cross_trend_detection()
         #self.candle_size_analysis()
@@ -181,76 +181,34 @@ class Tools_cl(object):
         for index in range(len(relevant_bounds_idx)):
             temp_array[relevant_bounds_idx[index]] = 'True'
         self.df['tmcrtd_relevant_bounds'] = temp_array
-
-    def zigzig_trend_detection(self):
+    def zigzig_trend_detection(self,deviation=5,backstep=1,depth=1):
         pl=self.df.Low
         ph=self.df.High
         h,hp,l,lp=ph[0],0,pl[0],0
         el,eh,elp,ehp = pl[0],ph[0],0,0
         ehf,elf=1,1
+        dev=deviation/100
         for i in range(len(self.df)):
-            print()
-            print()
-            print(self.df.index[i])
-
-            #print('l-', l)
-            #print('h-', h)
-
-            if(ph[i]>h):
+            if(((ph[i]>=h) | (~ehf & elf)) & ( i-elp>= backstep) & ( i-ehp>= depth)):
                 h,hp=ph[i],i
-                print('h-', h)
-            else:
-                print('hp-', hp)
-                print('lp-', lp)
-                if(pl[i]<l):
-                    l,lp=pl[i],i
-                    print('l-',l)
-                if ((0.95 * h > pl[i]) & ehf ):
-                    ehf,elf=0,1
-                    eh = h
-                    ehp=hp
-                    h, hp, l, lp = ph[i], i, pl[i], i
-                    print()
-                    print(self.df.index[i])
-                    print(self.df.index[ehp])
-                    print('   eh-', eh)
-                    print('h-', h)
-
-            if (pl[i] < l):
+            if(((pl[i]) <= l) | (ehf & ~elf) & (i-ehp>= backstep) & ( i-elp>= depth)):
                 l,lp=pl[i],i
-                print('l-', l)
-            else:
-                print('hp-', hp)
-                print('lp-', lp)
-                if (ph[i] > h):
-                    h,hp=ph[i],i
-                    print('h-',h)
-                if ((1.05 * l < ph[i]) & elf):
-                    ehf, elf = 1, 0
-                    el = l
-                    elp=lp
-                    h, hp, l, lp = ph[i], i, pl[i], i
-                    print()
-                    print(self.df.index[i])
-                    print(self.df.index[elp])
-                    print('   el-', el)
-                    print('l-', l)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            if (((1-dev) * h > pl[i]) & ehf & ( i-hp>= backstep) & ( i-ehp>= depth)):
+                print()
+                ehf,elf=0,1
+                eh = h
+                ehp=hp
+                h, hp, l, lp = ph[i], i,pl[i], i
+                print(self.df.index[ehp])
+                print('--EH-',eh)
+            if (((1+dev) * l < ph[i]) & elf & ( i-lp>= backstep) & ( i-elp>= depth)):
+                print()
+                ehf, elf = 1, 0
+                el = l
+                elp=lp
+                h, hp, l, lp = ph[i], i,pl[i], i
+                print(self.df.index[elp])
+                print('--EL-',el)
 
     def price_level_analysis(self):#how much cs at each price level
         pass
