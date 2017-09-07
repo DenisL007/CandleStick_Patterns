@@ -181,6 +181,7 @@ class Tools_cl(object):
         for index in range(len(relevant_bounds_idx)):
             temp_array[relevant_bounds_idx[index]] = 'True'
         self.df['tmcrtd_relevant_bounds'] = temp_array
+
     def zigzig_trend_detection(self,deviation=5,backstep=1,depth=1):
         pl=self.df.Low
         ph=self.df.High
@@ -210,6 +211,82 @@ class Tools_cl(object):
                 print(self.df.index[elp])
                 print('--EL-',el)
 
+    def one_ma_cross_volume_trend_detection(self,source='Volume',period=20,min_days_trend=2):
+        self.df['omcvrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
+        #self.df['omcvrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
+        self.df['omcvrtd_trend'] = where(self.df[source] > self.df['omcvrtd_ma'], 1, 0)
+        self.df['omcvrtd_trend'] = where(self.df[source] < self.df['omcvrtd_ma'], -1, self.df['omcvrtd_trend'])
+        #find trend change point
+        omcvrtd_trend = self.df['omcvrtd_trend']
+        bounds = (diff(omcvrtd_trend) != 0) & (omcvrtd_trend[1:] != 0)
+        bounds = concatenate(([omcvrtd_trend[0] != 0], bounds))
+        self.df['omcvrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcvrtd_trend[idx] == omcvrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(omcvrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcvrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df),dtype=bool)
+        for index in range (len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['omcvrtd_relevant_bounds'] = temp_array
+        #self.df['omcrtd_plot'] = nan
+        self.df.loc[self.df['omcrtd_relevant_bounds'] == True , 'omcrtd_plot'] = self.df.Close
+        # Iterate segments + plot
+        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
+        #    # Slice segment
+        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
+        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
+        #    # Plot data
+        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
+        #    plt.plot(segment.index, segment['Close'], color=data_color)
+        #    # Plot fit
+        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
+        #    fit_val = coef * x + intercept
+        #    fit_color = 'yellow' if coef > 0 else 'blue'
+        #    plt.plot(segment.index, fit_val, color=fit_color)
+        # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period,
+                                              min_periods=period).mean()  # can be changed to EMA
+        # self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
+        self.df['omcrtd_trend'] = where(self.df[source] > self.df['omcrtd_ma'], 1, 0)
+        self.df['omcrtd_trend'] = where(self.df[source] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
+        # find trend change point
+        omcrtd_trend = self.df['omcrtd_trend']
+        bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
+        bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
+        self.df['omcrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array(
+            [idx for idx in bounds_idx if all(omcrtd_trend[idx] == omcrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df), dtype=bool)
+        for index in range(len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['omcrtd_relevant_bounds'] = temp_array
+        # self.df['omcrtd_plot'] = nan
+        self.df.loc[self.df['omcrtd_relevant_bounds'] == True, 'omcrtd_plot'] = self.df.Close
+        # Iterate segments + plot
+        # for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
+        #    # Slice segment
+        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
+        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
+        #    # Plot data
+        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
+        #    plt.plot(segment.index, segment['Close'], color=data_color)
+        #    # Plot fit
+        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
+        #    fit_val = coef * x + intercept
+        #    fit_color = 'yellow' if coef > 0 else 'blue'
+        #    plt.plot(segment.index, fit_val, color=fit_color)
     def price_level_analysis(self):#how much cs at each price level
         pass
 
