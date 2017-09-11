@@ -5,7 +5,7 @@ import pandas_datareader.data as web
 
 class ImportDataFrame():
     # evaluating time range of our data
-    start = dt.datetime( 2014, 12, 26)
+    start = dt.datetime( 2015, 1, 1)
     year = None
     end = dt.datetime.today()
 
