@@ -8,27 +8,28 @@ import matplotlib.pyplot as plt
 class Tools_cl(object):
 
 
-    def __init__(self,data_frame,ma_period=1,lr_period=2):
-        self.ma_period = ma_period
-        self.lr_period = lr_period
-        self.hammer_trend_slope = 0.087
+    def __init__(self,data_frame):
         self.df = data_frame
 
-        self.one_ma_cross_trend_detection(period=50)
-        #self.tree_ma_cross_trend_detection()
-        #self.one_ma_cross_volume_trend_detection()
-        #self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
-        self.plot_candles(pricing=self.df,title='Intc',o=True)#,technicals=[self.df.int_omcrtd_plot])
+ #  calculate and plot trend by ma
+#        self.one_ma_cross_trend_detection(period=50)
+#        self.tree_ma_cross_trend_detection()
+#        self.one_ma_cross_volume_trend_detection()
+#        self.df['int_omcrtd_plot']=self.df['omcrtd_plot'].interpolate()
+#        self.plot_candles(pricing=self.df,title='Intc',o=True)#,technicals=[self.df.int_omcrtd_plot])
 
-        #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
-        #self.plot_candles(pricing=self.df,title='Intc',technicals=[self.df.zz.interpolate()])
-        #self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
+ # calculate ZZ
+#        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
+#        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
+
+        self.umbrella_candle()
+        self.linear_regression()
+
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
         #print(self.issuer_list)
         # self.ma_linear_regression()
-        # self.umbrella_candle()
         # self.hammer()
         # self.hanging_man()
         print(self.df)
@@ -111,7 +112,7 @@ class Tools_cl(object):
             ax3.set_title(omcrtd_title)
             ax3.xaxis.grid(False)
 
-        if ot:
+        if t:
             tmcrtd = pricing['tmcrtd_trend']
             ax3.bar(x,tmcrtd)
             tmcrtd_title = 'tmcrtd'
@@ -266,6 +267,34 @@ class Tools_cl(object):
         self.df.loc[temp_array == 1 , 'zz'] = self.df.High
         self.df.loc[temp_array == -1, 'zz'] = self.df.Low
 
+    def umbrella_candle (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
+        temp_array = zeros(len(self.df))
+        for index in range(len(self.df)):
+            Open,High,Low,Close = self.df['Open'][index],self.df['High'][index],self.df['Low'][index],self.df['Close'][index]
+            if (Close >= Open): #white candle
+                Candle = High - Low
+                Body = Close - Open
+                U_Shadow = High - Close
+                L_Shadow = Open - Low
+                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)): # parameters of umbrella candle
+                    temp_array[index] = 1
+            else: # same for black candle
+                Candle = High - Low
+                Body = Open - Close
+                U_Shadow = High - Open
+                L_Shadow = Close - Low
+                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)):
+                    temp_array[index] = 1
+            self.df.loc[temp_array == 1 , 'Umbrella'] = 'True'
+
+    def ma_linear_regression(self):
+        y = arange(float(self.lr_period))
+        for index in range((self.ma_period - 1), len(self.df) - self.lr_period + 1, 1):  # from end of issuer_list
+            for index2 in range(self.lr_period): #prepare array len(lr_period)
+                y[index2] = self.df['MA'][index+index2]
+            slope, intercept, r_value, p_value, std_err = stats.linregress(arange(self.lr_period), y)
+            self.df.set_value([index + self.lr_period - 1], 'LR', slope)
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
@@ -300,41 +329,7 @@ class Tools_cl(object):
         name = 'MA_{period}'.format(period=period)
         self.df[name] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
 
-    def ma_linear_regression(self):
-        y = arange(float(self.lr_period))
-        for index in range((self.ma_period - 1), len(self.df) - self.lr_period + 1,
-                           1):  # from end of issuer_list
-            for index2 in range(self.lr_period): #prepare array len(lr_period)
-                y[index2] = self.df['MA'][index+index2]
-            slope, intercept, r_value, p_value, std_err = stats.linregress(arange(self.lr_period), y)
-            self.df.set_value([index + self.lr_period - 1], 'LR', slope)
 
-    def umbrella_candle (self):
-        u_shadow_size_parameter = 0.2
-        body_size_parameter = 0.1
-        for index in range(len(self.df)):
-            Open = self.df['Open'][index]
-            High = self.df['High'][index]
-            Low = self.df['Low'][index]
-            Close = self.df['Close'][index]
-            if (Close > Open): #white candle
-                Candle = High - Low
-                Body = Close - Open
-                U_Shadow = High - Close
-                L_Shadow = Open - Low
-                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= u_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)): # parameters of umbrella candle
-                    self.df.set_value([index], 'Umbrella', 'True')
-                else:
-                    self.df.set_value([index], 'Umbrella', 'False')
-            else: # same for black candle
-                Candle = High - Low
-                Body = Open - Close
-                U_Shadow = High - Open
-                L_Shadow = Close - Low
-                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= u_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)):
-                    self.df.set_value([index], 'Umbrella', 'True')
-                else:
-                    self.df.set_value([index], 'Umbrella', 'False')
 
     def average_slope(self):
         pass
