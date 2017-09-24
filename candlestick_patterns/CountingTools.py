@@ -23,7 +23,8 @@ class Tools_cl(object):
 #        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
 
         self.umbrella_candle()
-        self.linear_regression()
+        self.ma_linear_regression()
+        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
 
         #self.candle_size_analysis()
         #self.define_long_candlestick()
@@ -240,6 +241,7 @@ class Tools_cl(object):
         # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
 
     def zigzig_trend_detection(self,deviation=5,backstep=1,depth=1):
+        zz_name ='zz_{deviation}%'.format(deviation=deviation)
         temp_array = zeros(len(self.df))
         pl=self.df.Low
         ph=self.df.High
@@ -264,8 +266,14 @@ class Tools_cl(object):
                 elp=lp
                 h, hp, l, lp = ph[i], i,pl[i], i
                 temp_array[elp]=-1
-        self.df.loc[temp_array == 1 , 'zz'] = self.df.High
-        self.df.loc[temp_array == -1, 'zz'] = self.df.Low
+        self.df.loc[temp_array == 1 , zz_name] = self.df.High
+        self.df.loc[temp_array == -1, zz_name] = self.df.Low
+        self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
+        self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
+
+    def moving_average(self,period=1):
+        name = 'MA_{period}'.format(period=period)
+        self.df[name] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
 
     def umbrella_candle (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
         temp_array = zeros(len(self.df))
@@ -287,14 +295,17 @@ class Tools_cl(object):
                     temp_array[index] = 1
             self.df.loc[temp_array == 1 , 'Umbrella'] = 'True'
 
-    def ma_linear_regression(self):
-        y = arange(float(self.lr_period))
-        for index in range((self.ma_period - 1), len(self.df) - self.lr_period + 1, 1):  # from end of issuer_list
-            for index2 in range(self.lr_period): #prepare array len(lr_period)
-                y[index2] = self.df['MA'][index+index2]
-            slope, intercept, r_value, p_value, std_err = stats.linregress(arange(self.lr_period), y)
-            self.df.set_value([index + self.lr_period - 1], 'LR', slope)
-
+    def ma_linear_regression(self,lr_period=5,ma_period=20):
+        self.moving_average(ma_period)
+        ma_name = 'MA_{period}'.format(period=ma_period)
+        slopes = zeros(len(self.df),dtype=float)
+        y = arange(float(lr_period))
+        for index in range((ma_period - 1), len(self.df)-lr_period+1 , 1):  # from end of issuer_list
+            for index2 in range(lr_period): #prepare array len(lr_period)
+                y[index2] = self.df[ma_name][index+index2]
+            slope, intercept, r_value, p_value, std_err = stats.linregress(arange(lr_period), y)
+            slopes[index+lr_period-1]=slope
+        self.df['LR']=slopes
 
     def price_level_analysis(self):#how much cs at each price level
         pass
@@ -324,11 +335,6 @@ class Tools_cl(object):
         for index in range(len(avrSize)):
             if(self.df.Size[index] < 0.51*avrSize[index]):# if current cs_size less that avr Size add "SCS" to dataframe
                 self.df.set_value(index,'Short_CS','SCS')
-
-    def moving_average(self,period=1):
-        name = 'MA_{period}'.format(period=period)
-        self.df[name] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
-
 
 
     def average_slope(self):
