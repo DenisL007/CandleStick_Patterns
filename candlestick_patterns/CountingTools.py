@@ -21,11 +21,7 @@ class Tools_cl(object):
  # calculate ZZ
 #        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
 #        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
-
-        self.umbrella_candle()
-        self.ma_linear_regression()
-        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
-
+        self.hammer_lr()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -297,7 +293,8 @@ class Tools_cl(object):
 
     def ma_linear_regression(self,lr_period=5,ma_period=20):
         self.moving_average(ma_period)
-        ma_name = 'MA_{period}'.format(period=ma_period)
+        ma_name = 'MA_{period1}'.format(period1=ma_period)
+        lr_name = 'LR_{period2}'.format(period2=lr_period)
         slopes = zeros(len(self.df),dtype=float)
         y = arange(float(lr_period))
         for index in range((ma_period - 1), len(self.df)-lr_period+1 , 1):  # from end of issuer_list
@@ -305,7 +302,24 @@ class Tools_cl(object):
                 y[index2] = self.df[ma_name][index+index2]
             slope, intercept, r_value, p_value, std_err = stats.linregress(arange(lr_period), y)
             slopes[index+lr_period-1]=slope
-        self.df['LR']=slopes
+        self.df[lr_name]=slopes
+
+    def hammer_lr(self,u_u=0.2,u_b=0.1,lrp=5,lrma=20):
+        self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
+        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
+        lr_name = 'LR_{period2}'.format(period2=lrp)
+        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
+        for index in umbrella_index:
+            downtrend = (self.df[lr_name][index] < 0.0)
+            if(index+lrp-1 > len(self.df)):
+                uptrand= (self.df[lr_name][len(self.df)] > 0.0)
+            else:
+                uptrand = (self.df[lr_name][index+lrp-1] > 0.0)
+            print(uptrand)
+
+
+
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
@@ -349,16 +363,6 @@ class Tools_cl(object):
     def gap_finder(selfself):
         pass
 
-    def hammer(self):
-        self.df['Hammer'] = 'False'
-        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
-        for index in umbrella_index:
-            if (index >= self.ma_period + self.lr_period - 2):
-                if((self.df.Low[index-1] >= self.df.Low[index]) & (self.df.Low[index+1] >= self.df.Low[index])):
-                    if (self.df.LR[index] < 0):
-                        self.df.set_value([index+1], 'Hammer', 'HA')
-                        self.df.set_value([index], 'Hammer', 'H')
-                        self.df.set_value([index-1], 'Hammer', 'HB')
 
     def hanging_man(self):
         self.df['Hanging Man'] = 'False'
