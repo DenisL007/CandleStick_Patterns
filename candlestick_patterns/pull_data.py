@@ -22,8 +22,7 @@ class ImportDataFrameGoogle():
         dframe = ImportDataFrameGoogle("INTC")
         print(dframe.il.head())
 
-#uncomment to run test
-ImportDataFrameGoogle("AAPL").importDataFrameGoogle_Test()
+#uncomment to run test ImportDataFrameGoogle("AAPL").importDataFrameGoogle_Test()
 
 class ImportDataFrameYahoo():
 
@@ -34,5 +33,4 @@ class ImportDataFrameYahoo():
     def importDataFrameYahoo_Test(NONE):
         dframe = ImportDataFrameYahoo("INTC")
         print(dframe.il.head())
-
-ImportDataFrameYahoo("AAPL").importDataFrameYahoo_Test()
+#uncomment to run test ImportDataFrameYahoo("AAPL").importDataFrameYahoo_Test()
