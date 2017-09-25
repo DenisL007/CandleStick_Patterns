@@ -1,7 +1,9 @@
 import os
 
 # pay attention for how the  import need to be done
-from candlestick_patterns.pull_data import ImportDataFrame
+from candlestick_patterns.pull_data import ImportDataFrameGoogle
+from candlestick_patterns.pull_data import ImportDataFrameYahoo
+
 from candlestick_patterns.CountingTools import Tools_cl
 
 #TODO - GUI for browser
@@ -20,13 +22,8 @@ if __name__ == '__main__':
     for key in stock_names:
         print(stock_names[key])
     print('\nWELCOME TO THE PROGRAM \n')
-    #kString = input(
-    #print('Please select from the list below by enter the key value\n'))
-    #k = int(kString)
-    # a single key in a dictionary can refer to only a single value so create a list to get access for first value
-    #list = stock_names[k]
+
     list = "INTC"
-    data_frame = ImportDataFrame(list)
+    data_frame = ImportDataFrameYahoo(list)
     intc = Tools_cl(data_frame.il)
-    # thats how you access to data frame
-    #print(data_frame.il)
+
