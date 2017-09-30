@@ -21,6 +21,7 @@ class Tools_cl(object):
  # calculate ZZ
 #        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
 #        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
+
         self.hammer_lr()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
@@ -304,22 +305,23 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def hammer_lr(self,u_u=0.2,u_b=0.1,lrp=5,lrma=20):
+    def hammer_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,full_pattern = True):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
         umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
-        for index in umbrella_index:
-            downtrend = (self.df[lr_name][index] < 0.0)
-            if(index+lrp-1 > len(self.df)):
-                uptrand= (self.df[lr_name][len(self.df)] > 0.0)
-            else:
-                uptrand = (self.df[lr_name][index+lrp-1] > 0.0)
-            print(uptrand)
-
-
-
-
+        self.df['Hammer_LR'] = None
+        for i in umbrella_index:
+            local_index=self.df.index.get_loc(i)
+            if(local_index > lrp+lrma-2):
+                if((self.df.Low[local_index] <= self.df.Low[local_index-1]) ):
+                    if(full_pattern):
+                        if(self.df.Low[local_index] <= self.df.Low[local_index+1]):
+                            if(self.df[lr_name][local_index] < 0.0):
+                                self.df.set_value(self.df.index[local_index], 'Hammer_LR', 'True')
+                    else:
+                        if(self.df[lr_name][local_index] < 0.0):
+                            self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
 
     def price_level_analysis(self):#how much cs at each price level
         pass
