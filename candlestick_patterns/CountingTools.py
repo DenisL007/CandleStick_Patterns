@@ -305,7 +305,7 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def hammer_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,full_pattern = True):
+    def hammer_lr(self,u_u=0.2,u_b=0.001,lrp=5,lrma=20,confirmation_candle = False):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
@@ -315,13 +315,37 @@ class Tools_cl(object):
             local_index=self.df.index.get_loc(i)
             if(local_index > lrp+lrma-2):
                 if((self.df.Low[local_index] <= self.df.Low[local_index-1]) ):
-                    if(full_pattern):
+                    if(confirmation_candle):
                         if(self.df.Low[local_index] <= self.df.Low[local_index+1]):
                             if(self.df[lr_name][local_index] < 0.0):
                                 self.df.set_value(self.df.index[local_index], 'Hammer_LR', 'True')
                     else:
                         if(self.df[lr_name][local_index] < 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
+
+    def hanging_man_lr(self,u_u=0.2,u_b=0.001,lrp=5,lrma=20,confirmation_candle = False):
+        self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
+        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
+        lr_name = 'LR_{period2}'.format(period2=lrp)
+        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
+        self.df['Hanging_Man_LR'] = None
+        for i in umbrella_index:
+            local_index=self.df.index.get_loc(i)
+            if(local_index > lrp+lrma-2):
+                if((self.df.Open[local_index] >= self.df.Open[local_index-1]) & (self.df.Open[local_index] >= self.df.Close[local_index-1])):
+                    if(confirmation_candle):
+                        if((self.df.Close[local_index+1] < self.df.Open[local_index]) & (self.df.Close[local_index+1] < self.df.Close[local_index])):
+                            if (self.df[lr_name][local_index] > 0.0):
+                                self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR', 'True')
+                    else:
+                        if(self.df[lr_name][local_index] > 0.0):
+                            self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR','True')
+
+
+
+
+
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
