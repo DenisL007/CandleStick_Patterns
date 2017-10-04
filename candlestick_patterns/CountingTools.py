@@ -22,7 +22,8 @@ class Tools_cl(object):
 #        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
 #        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
 
-        self.hammer_lr()
+        #self.hammer_lr()
+        self.hanging_man_lr()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -305,7 +306,7 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def hammer_lr(self,u_u=0.2,u_b=0.001,lrp=5,lrma=20,confirmation_candle = False):
+    def hammer_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
@@ -323,7 +324,7 @@ class Tools_cl(object):
                         if(self.df[lr_name][local_index] < 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
 
-    def hanging_man_lr(self,u_u=0.2,u_b=0.001,lrp=5,lrma=20,confirmation_candle = False):
+    def hanging_man_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
@@ -332,7 +333,7 @@ class Tools_cl(object):
         for i in umbrella_index:
             local_index=self.df.index.get_loc(i)
             if(local_index > lrp+lrma-2):
-                if((self.df.Open[local_index] >= self.df.Open[local_index-1]) & (self.df.Open[local_index] >= self.df.Close[local_index-1])):
+                if((self.df.Open[local_index] > self.df.Open[local_index-1]) & (self.df.Open[local_index] > self.df.Close[local_index-1])):
                     if(confirmation_candle):
                         if((self.df.Close[local_index+1] < self.df.Open[local_index]) & (self.df.Close[local_index+1] < self.df.Close[local_index])):
                             if (self.df[lr_name][local_index] > 0.0):
@@ -342,7 +343,7 @@ class Tools_cl(object):
                             self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR','True')
 
 
-
+###########################################################################################
 
 
 
@@ -376,7 +377,6 @@ class Tools_cl(object):
             if(self.df.Size[index] < 0.51*avrSize[index]):# if current cs_size less that avr Size add "SCS" to dataframe
                 self.df.set_value(index,'Short_CS','SCS')
 
-
     def average_slope(self):
         pass
 
@@ -388,19 +388,6 @@ class Tools_cl(object):
 
     def gap_finder(selfself):
         pass
-
-
-    def hanging_man(self):
-        self.df['Hanging Man'] = 'False'
-        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
-        for index in umbrella_index:
-            if (index >= self.ma_period + self.lr_period - 2):
-                if ((self.df.High[index - 1] <= self.df.High[index]) & (
-                    self.df.High[index + 1] <= self.df.High[index])):
-                    if (self.df.LR[index] > 0):
-                        self.df.set_value([index + 1], 'Hanging Man', 'HMA')
-                        self.df.set_value([index], 'Hanging Man', 'HM')
-                        self.df.set_value([index - 1], 'Hanging Man', 'HMB')
 
     def support_resistance_level_analysis(self):
         pass
