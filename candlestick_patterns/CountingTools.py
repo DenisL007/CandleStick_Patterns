@@ -19,11 +19,14 @@ class Tools_cl(object):
 #        self.plot_candles(pricing=self.df,title='Intc',o=True)#,technicals=[self.df.int_omcrtd_plot])
 
  # calculate ZZ
-#        self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
-#        self.plot_candles(pricing=self.df, title='Intc', o=True,technicals=[self.df.zz.interpolate()])
+        #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
+        #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
 
-        #self.hammer_lr()
-        self.hanging_man_lr()
+        #self.hammer()
+        #self.hanging_man()
+        #self.candle_spec()
+        #self.bullish_engulfing()
+        self.bearish_engulfing()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -68,7 +71,7 @@ class Tools_cl(object):
 
         if (ot):
             fig, (ax1, ax3, ax4) = plt.subplots(3,1, sharex=True, gridspec_kw={'height_ratios': [3, 1, 1]})
-        if (o | t):
+        elif (o | t):
             fig, (ax1, ax3) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
         elif volume_bars:
             fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
@@ -238,7 +241,7 @@ class Tools_cl(object):
         #    plt.plot(segment.index, fit_val, color=fit_color)
         # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
 
-    def zigzig_trend_detection(self,deviation=5,backstep=1,depth=1):
+    def zigzig(self,deviation=5,backstep=1,depth=1):
         zz_name ='zz_{deviation}%'.format(deviation=deviation)
         temp_array = zeros(len(self.df))
         pl=self.df.Low
@@ -268,6 +271,9 @@ class Tools_cl(object):
         self.df.loc[temp_array == -1, zz_name] = self.df.Low
         self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
         self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
+
+    def zz_trend_detection(self):
+        pass
 
     def moving_average(self,period=1):
         name = 'MA_{period}'.format(period=period)
@@ -306,7 +312,13 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def hammer_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
+    def candle_spec(self):
+        self.df['Body'] = abs((self.df.Close - self.df.Open).round(decimals=2))
+        self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
+        self.df['Candle_trend'] = where(self.df.Open < self.df.Close, 'Bull', 'Bear')
+        self.df['Candle_trend'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) < 0.03, 'Doji', self.df['Candle_trend'])
+
+    def hammer(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
@@ -324,7 +336,7 @@ class Tools_cl(object):
                         if(self.df[lr_name][local_index] < 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
 
-    def hanging_man_lr(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
+    def hanging_man(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
         self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
@@ -345,6 +357,37 @@ class Tools_cl(object):
 
 ###########################################################################################
 
+    def bullish_engulfing(self,lrp=5,lrma=20):
+        self.candle_spec()
+        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
+        lr_name = 'LR_{period2}'.format(period2=lrp)
+        self.df['Bullish_engulfing'] = None
+        Bull_indexes = self.df.loc[(self.df.Candle_trend == 'Bull')].index.tolist()
+        for bull_index in Bull_indexes:
+            i =self.df.index.get_loc(bull_index)
+            if(i > lrp+lrma-2):
+                if(self.df.Candle_trend[i-1] != 'Bull'):
+                    if((self.df.Open[i] <= self.df.Open[i-1]) & (self.df.Open[i] <= self.df.Close[i-1])):
+                        if ((self.df.Close[i] > self.df.Open[i - 1]) & (self.df.Close[i] > self.df.Close[i - 1])):
+                            if(self.df[lr_name][i-1] < 0.0):
+                                self.df.set_value(self.df.index[i-1],'Bullish_engulfing', 'True')
+                                self.df.set_value(self.df.index[i],'Bullish_engulfing', 'True')
+
+    def bearish_engulfing(self, lrp=5, lrma=20):
+        self.candle_spec()
+        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
+        lr_name = 'LR_{period2}'.format(period2=lrp)
+        self.df['Bearish_engulfing'] = None
+        Bear_indexes = self.df.loc[(self.df.Candle_trend == 'Bear')].index.tolist()
+        for bear_index in Bear_indexes:
+            i = self.df.index.get_loc(bear_index)
+            if (i > lrp + lrma - 2):
+                if (self.df.Candle_trend[i - 1] != 'Bear'):
+                    if ((self.df.Open[i] >= self.df.Open[i - 1]) & (self.df.Open[i] >= self.df.Close[i - 1])):
+                        if ((self.df.Close[i] < self.df.Open[i - 1]) & (self.df.Close[i] < self.df.Close[i - 1])):
+                            if (self.df[lr_name][i - 1] > 0.0):
+                                self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'True')
+                                self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'True')
 
 
 
