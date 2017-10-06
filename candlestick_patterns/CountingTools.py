@@ -24,9 +24,11 @@ class Tools_cl(object):
 
         #self.hammer()
         #self.hanging_man()
-        #self.candle_spec()
+        self.candle_spec()
+        self.umbrella_candle_new()
+        self.umbrella_candle()
         #self.bullish_engulfing()
-        self.bearish_engulfing()
+        #self.bearish_engulfing()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -279,25 +281,8 @@ class Tools_cl(object):
         name = 'MA_{period}'.format(period=period)
         self.df[name] = Series.rolling(self.df['Close'], window=period, min_periods=period).mean()
 
-    def umbrella_candle (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
-        temp_array = zeros(len(self.df))
-        for index in range(len(self.df)):
-            Open,High,Low,Close = self.df['Open'][index],self.df['High'][index],self.df['Low'][index],self.df['Close'][index]
-            if (Close >= Open): #white candle
-                Candle = High - Low
-                Body = Close - Open
-                U_Shadow = High - Close
-                L_Shadow = Open - Low
-                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)): # parameters of umbrella candle
-                    temp_array[index] = 1
-            else: # same for black candle
-                Candle = High - Low
-                Body = Open - Close
-                U_Shadow = High - Open
-                L_Shadow = Close - Low
-                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)):
-                    temp_array[index] = 1
-            self.df.loc[temp_array == 1 , 'Umbrella'] = 'True'
+    def umbrella_candle(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
+        self.df.loc[((self.df.Candle_trend != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), 'Umbrella'] = 'True'
 
     def ma_linear_regression(self,lr_period=5,ma_period=20):
         self.moving_average(ma_period)
@@ -317,9 +302,11 @@ class Tools_cl(object):
         self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
         self.df['Candle_trend'] = where(self.df.Open < self.df.Close, 'Bull', 'Bear')
         self.df['Candle_trend'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) < 0.03, 'Doji', self.df['Candle_trend'])
+        self.df['Upper_shadow'] = where(self.df.Open >= self.df.Close,(self.df.High - self.df.Open).round(decimals=2),(self.df.High - self.df.Close).round(decimals=2))
+        self.df['Lower_shadow'] = where(self.df.Open >= self.df.Close,(self.df.Close - self.df.Low).round(decimals=2),(self.df.Open - self.df.Low).round(decimals=2))
 
-    def hammer(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
-        self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
+    def hammer(self,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
+        self.umbrella_candle(upper_shadow_size=u_u)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
         umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
@@ -336,8 +323,8 @@ class Tools_cl(object):
                         if(self.df[lr_name][local_index] < 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
 
-    def hanging_man(self,u_u=0.2,u_b=0.01,lrp=5,lrma=20,confirmation_candle = False):
-        self.umbrella_candle(upper_shadow_size_parameter=u_u,body_size_parameter=u_b)
+    def hanging_man(self,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
+        self.umbrella_candle(upper_shadow_size=u_u)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
         umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
@@ -388,7 +375,6 @@ class Tools_cl(object):
                             if (self.df[lr_name][i - 1] > 0.0):
                                 self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'True')
                                 self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'True')
-
 
 
     def price_level_analysis(self):#how much cs at each price level
@@ -450,3 +436,24 @@ class Tools_cl(object):
     def ma_d_trend_analysis(self):
         pass
 
+
+'''    def umbrella_candle (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
+        temp_array = zeros(len(self.df))
+        for index in range(len(self.df)):
+            Open,High,Low,Close = self.df['Open'][index],self.df['High'][index],self.df['Low'][index],self.df['Close'][index]
+            if (Close >= Open): #white candle
+                Candle = High - Low
+                Body = Close - Open
+                U_Shadow = High - Close
+                L_Shadow = Open - Low
+                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)): # parameters of umbrella candle
+                    temp_array[index] = 1
+            else: # same for black candle
+                Candle = High - Low
+                Body = Open - Close
+                U_Shadow = High - Open
+                L_Shadow = Close - Low
+                if ((Body > 0) & (L_Shadow >= float(2) * Body) & (U_Shadow <= upper_shadow_size_parameter * Candle) & (Body >= body_size_parameter * Candle)):
+                    temp_array[index] = 1
+            self.df.loc[temp_array == 1 , 'Umbrella'] = 'True'
+'''
