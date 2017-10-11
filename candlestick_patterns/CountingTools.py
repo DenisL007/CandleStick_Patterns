@@ -25,7 +25,7 @@ class Tools_cl(object):
         #self.hammer()
         #self.hanging_man()
         self.candle_spec()
-        #self.umbrella_candle()
+        self.umbrella_candle()
         #self.umbrella_candle_old()
         #self.dark_cloud_cover()
         #self.piercing_pattern()
@@ -283,9 +283,10 @@ class Tools_cl(object):
     def moving_average(self,period=1,source='Close'):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
-
+#TODO - if set(name).issubset(self.df.columns):
     def umbrella_candle(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
-        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), 'Umbrella'] = 'True'
+        name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
+        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), name] = 'True'
 
     def ma_linear_regression(self,lr_period=5,ma_period=20,ma_source='Close'):
         self.moving_average(ma_period)
@@ -313,14 +314,8 @@ class Tools_cl(object):
         self.df['Marubozu'] = where((self.df.Lower_shadow < 0.03*self.df.Body) & (self.df.Upper_shadow < 0.03*self.df.Body),'Marubozu','')
         self.df=self.df.drop('Body_avr',1)
 
-
-
-
-
-
-
-    def hammer(self,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
-        self.umbrella_candle(upper_shadow_size=u_u)
+    def hammer(self,l_u=2.0,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
+        self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
         self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
         lr_name = 'LR_{period2}'.format(period2=lrp)
         umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
