@@ -21,16 +21,17 @@ class Tools_cl(object):
  # calculate ZZ
         #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
-        #self.moving_average()
-        #self.hammer()
-        #self.hanging_man()
-        self.candle_spec()
-        self.umbrella_candle()
+        #self.moving_average(period=20)
+        #self.ma_linear_regression()
+        self.hammer()
+        self.hanging_man()
+        #self.candle_spec()
+        #self.umbrella_candle()
         #self.umbrella_candle_old()
-        #self.dark_cloud_cover()
-        #self.piercing_pattern()
-        #self.bullish_engulfing()
-        #self.bearish_engulfing()
+        self.dark_cloud_cover()
+        self.piercing_pattern()
+        self.bullish_engulfing()
+        self.bearish_engulfing()
         #self.on_neck()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
@@ -280,18 +281,32 @@ class Tools_cl(object):
     def zz_trend_detection(self):
         pass
 
+    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec='False',lr_p=0,lr_ma_p=0,lr_ma_s='Close'):
+        if(ma_p != 0):
+            ma_name='MA_{source}_{period1}'.format(period1=ma_p,source=ma_s)
+            if ma_name not in self.df:
+                self.moving_average(period=ma_p,source=ma_s)
+        if(candle_spec):
+            if (('Body' not in self.df) | ('Candle' not in self.df) | ('Candle_direction' not in self.df) | ('Lower_shadow' not in self.df) | ('Upper_shadow' not in self.df) | ('Long_Short' not in self.df) | ('Marubozu' not in self.df)):
+                self.candle_spec()
+        if(lr_p != 0):
+            lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+            if lr_name not in self.df:
+                self.ma_linear_regression(lr_period=lr_p,ma_period=lr_ma_p,ma_source=lr_ma_s)
+
     def moving_average(self,period=1,source='Close'):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
-#TODO - if set(name).issubset(self.df.columns):
+
     def umbrella_candle(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
+        self.check_column_exist(candle_spec='True')
         name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
         self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), name] = 'True'
 
     def ma_linear_regression(self,lr_period=5,ma_period=20,ma_source='Close'):
-        self.moving_average(ma_period)
         ma_name = 'MA_{source}_{period1}'.format(period1=ma_period,source=ma_source)
-        lr_name = 'LR_{period2}'.format(period2=lr_period)
+        self.check_column_exist(ma_p=ma_period,ma_s=ma_source)
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_period,p2=ma_source,p3=ma_period)
         slopes = zeros(len(self.df),dtype=float)
         y = arange(float(lr_period))
         for index in range((ma_period - 1), len(self.df)-lr_period+1 , 1):  # from end of issuer_list
@@ -314,15 +329,17 @@ class Tools_cl(object):
         self.df['Marubozu'] = where((self.df.Lower_shadow < 0.03*self.df.Body) & (self.df.Upper_shadow < 0.03*self.df.Body),'Marubozu','')
         self.df=self.df.drop('Body_avr',1)
 
-    def hammer(self,l_u=2.0,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
-        self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
-        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
+    def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+        umbrella_name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+        if umbrella_name not in self.df:
+            self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
+        umbrella_index = self.df.loc[(self.df[umbrella_name] == 'True')].index.tolist()
         self.df['Hammer_LR'] = None
         for i in umbrella_index:
             local_index=self.df.index.get_loc(i)
-            if(local_index > lrp+lrma-2):
+            if(local_index > lr_p+lr_ma_p-2):
                 if((self.df.Low[local_index] <= self.df.Low[local_index-1]) ):
                     if(confirmation_candle):
                         if(self.df.Low[local_index] <= self.df.Low[local_index+1]):
@@ -332,15 +349,17 @@ class Tools_cl(object):
                         if(self.df[lr_name][local_index] < 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
 
-    def hanging_man(self,u_u=0.2,lrp=5,lrma=20,confirmation_candle = False):
-        self.umbrella_candle(upper_shadow_size=u_u)
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
-        umbrella_index = self.df.loc[(self.df.Umbrella == 'True')].index.tolist()
+    def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+        umbrella_name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+        if umbrella_name not in self.df:
+            self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
+        umbrella_index = self.df.loc[(self.df[umbrella_name] == 'True')].index.tolist()
         self.df['Hanging_Man_LR'] = None
         for i in umbrella_index:
             local_index=self.df.index.get_loc(i)
-            if(local_index > lrp+lrma-2):
+            if(local_index > lr_p+lr_ma_p-2):
                 if((self.df.Open[local_index] > self.df.Open[local_index-1]) & (self.df.Open[local_index] > self.df.Close[local_index-1])):
                     if(confirmation_candle):
                         if((self.df.Close[local_index+1] < self.df.Open[local_index]) & (self.df.Close[local_index+1] < self.df.Close[local_index])):
@@ -350,18 +369,14 @@ class Tools_cl(object):
                         if(self.df[lr_name][local_index] > 0.0):
                             self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR','True')
 
-
-###########################################################################################
-
-    def bullish_engulfing(self,lrp=5,lrma=20):
-        self.candle_spec()
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
+    def bullish_engulfing(self,lr_p=5,lr_ma_p=20,lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         self.df['Bullish_engulfing'] = None
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
         for bull_index in Bull_indexes:
             i =self.df.index.get_loc(bull_index)
-            if(i > lrp+lrma-2):
+            if(i > lr_p+lr_ma_p-2):
                 if(self.df.Candle_direction[i-1] != 'Bull'):
                     if((self.df.Open[i] <= self.df.Open[i-1]) & (self.df.Open[i] <= self.df.Close[i-1])):
                         if ((self.df.Close[i] > self.df.Open[i - 1]) & (self.df.Close[i] > self.df.Close[i - 1])):
@@ -369,15 +384,14 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i-1],'Bullish_engulfing', 'True')
                                 self.df.set_value(self.df.index[i],'Bullish_engulfing', 'True')
 
-    def bearish_engulfing(self, lrp=5, lrma=20):
-        self.candle_spec()
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
+    def bearish_engulfing(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         self.df['Bearish_engulfing'] = None
         Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
         for bear_index in Bear_indexes:
             i = self.df.index.get_loc(bear_index)
-            if (i > lrp + lrma - 2):
+            if (i > lr_p + lr_ma_p - 2):
                 if (self.df.Candle_direction[i - 1] != 'Bear'):
                     if ((self.df.Open[i] >= self.df.Open[i - 1]) & (self.df.Open[i] >= self.df.Close[i - 1])):
                         if ((self.df.Close[i] < self.df.Open[i - 1]) & (self.df.Close[i] < self.df.Close[i - 1])):
@@ -385,15 +399,14 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'True')
                                 self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'True')
 
-    def dark_cloud_cover(self, lrp=5, lrma=20):
-        self.candle_spec()
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
+    def dark_cloud_cover(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
         self.df['Dark_cloud_cover'] = None
         for bear_index in Bear_indexes:
             i = self.df.index.get_loc(bear_index)
-            if (i > lrp + lrma - 2):
+            if (i > lr_p + lr_ma_p - 2):
                  if (self.df.Candle_direction[i - 1] == 'Bull'):
                      if(self.df.Open[i] > self.df.Close[i-1]):
                          if((self.df.Close[i] < (self.df.Open[i-1]+(self.df.Body[i-1]/2))) & (self.df.Close[i] >= self.df.Open[i-1])):
@@ -401,15 +414,14 @@ class Tools_cl(object):
                                  self.df.set_value(self.df.index[i-1], 'Dark_cloud_cover', 'True')
                                  self.df.set_value(self.df.index[i], 'Dark_cloud_cover', 'True')
 
-    def piercing_pattern (self, lrp=5, lrma=20):
-        self.candle_spec()
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
+    def piercing_pattern (self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
         self.df['Piercing_pattern'] = None
         for bull_index in Bull_indexes:
             i = self.df.index.get_loc(bull_index)
-            if (i > lrp + lrma - 2):
+            if (i > lr_p + lr_ma_p - 2):
                 if (self.df.Candle_direction[i - 1] == 'Bear'):
                     if(self.df.Open[i] < self.df.Close[i-1]):
                         if((self.df.Close[i] > (self.df.Close[i-1] + self.df.Body[i-1]/2)) & (self.df.Close[i] < self.df.Open[i-1])):
@@ -417,15 +429,14 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Piercing_pattern', 'True')
                                 self.df.set_value(self.df.index[i], 'Piercing_pattern', 'True')
 
-    def on_neck(self, lrp=5, lrma=20):
-        self.candle_spec()
-        self.ma_linear_regression(lr_period=lrp, ma_period=lrma)
-        lr_name = 'LR_{period2}'.format(period2=lrp)
+    def on_neck(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
         self.df['On_neck'] = None
         for bull_index in Bull_indexes:
             i = self.df.index.get_loc(bull_index)
-            if (i > lrp + lrma - 2):
+            if (i > lr_p + lr_ma_p - 2):
                 if (self.df.Candle_direction[i - 1] == 'Bear'):
                     if(self.df.Body[i] <= (self.df.MA_Body_23[i - 1] / 2.0)):
                         if(self.df.High[i] <= self.df.Close[i-1]):
