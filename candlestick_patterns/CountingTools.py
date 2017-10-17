@@ -23,16 +23,22 @@ class Tools_cl(object):
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
         #self.moving_average(period=20)
         #self.ma_linear_regression()
-        self.hammer()
-        self.hanging_man()
+        #self.hammer()
+        #self.hanging_man()
         #self.candle_spec()
         #self.umbrella_candle()
         #self.umbrella_candle_old()
-        self.dark_cloud_cover()
-        self.piercing_pattern()
-        self.bullish_engulfing()
-        self.bearish_engulfing()
+        #self.dark_cloud_cover()
+        #self.piercing_pattern()
+        #self.bullish_engulfing()
+        #self.bearish_engulfing()
         #self.on_neck()
+        #self.in_neck()
+        #self.thrusting_pattern()
+        #self.doji_morning_star()
+        #self.doji_evening_star()
+        #self.abandoned_baby_on_uptrend()
+        #self.abandoned_baby_on_downtrend()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -278,9 +284,6 @@ class Tools_cl(object):
         self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
         self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
 
-    def zz_trend_detection(self):
-        pass
-
     def check_column_exist(self,ma_p=0,ma_s='None',candle_spec='False',lr_p=0,lr_ma_p=0,lr_ma_s='Close'):
         if(ma_p != 0):
             ma_name='MA_{source}_{period1}'.format(period1=ma_p,source=ma_s)
@@ -298,10 +301,15 @@ class Tools_cl(object):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
 
-    def umbrella_candle(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
+    def pin_bar(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
         self.check_column_exist(candle_spec='True')
-        name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
+        name = 'Pin_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
         self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), name] = 'True'
+
+    def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_size=0.2):
+        self.check_column_exist(candle_spec='True')
+        name = 'Inverted_pin_{lsgb}_{uss}'.format(usgb=upper_shadow_greater_body, lss=lower_shadow_size)
+        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Upper_shadow >= upper_shadow_greater_body * self.df.Body) & (self.df.Lower_shadow <= lower_shadow_size * self.df.Candle)), name] = 'True'
 
     def ma_linear_regression(self,lr_period=5,ma_period=20,ma_source='Close'):
         ma_name = 'MA_{source}_{period1}'.format(period1=ma_period,source=ma_source)
@@ -316,58 +324,77 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def candle_spec(self,doji_size=0.1,long_size=1.3,short_size=0.5):
+    def candle_spec(self,doji_size=0.1,l_s_b=1.3,s_s_b=0.5,b_avr_p=7,l_s_c=1.3,s_s_c=0.5,c_avr_p=7):
         self.df['Body'] = abs((self.df.Close - self.df.Open).round(decimals=2))
         self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
         self.df['Candle_direction'] = where(self.df.Open < self.df.Close, 'Bull', 'Bear')
         self.df['Candle_direction'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) <= doji_size*(self.df.High-self.df.Low).round(decimals=2), 'Doji', self.df['Candle_direction'])
         self.df['Upper_shadow'] = where(self.df.Open >= self.df.Close,(self.df.High - self.df.Open).round(decimals=2),(self.df.High - self.df.Close).round(decimals=2))
         self.df['Lower_shadow'] = where(self.df.Open >= self.df.Close,(self.df.Close - self.df.Low).round(decimals=2),(self.df.Open - self.df.Low).round(decimals=2))
-        self.df['Body_avr'] = Series.rolling(self.df['Body'], window=7, min_periods=7).mean()
-        self.df['Long_Short'] = where(self.df.Body >= long_size * self.df.Body_avr, 'Long', '')
-        self.df['Long_Short'] = where(self.df.Body <= short_size * self.df.Body_avr, 'Short', self.df['Long_Short'])
-        self.df['Marubozu'] = where((self.df.Lower_shadow < 0.03*self.df.Body) & (self.df.Upper_shadow < 0.03*self.df.Body),'Marubozu','')
-        self.df=self.df.drop('Body_avr',1)
+        self.df['Shadow_lenght'] = (self.df.Upper_shadow + self.df.Lower_shadow).round(decimals=2)
+        self.df['Body_avr'] = Series.rolling(self.df['Body'], window=b_avr_p, min_periods=b_avr_p).mean()
+        self.df['Long_Short_B'] = where(self.df.Body >= l_s_b * self.df.Body_avr, 'Long', '')
+        self.df['Long_Short_B'] = where(self.df.Body <= s_s_b * self.df.Body_avr, 'Short', self.df['Long_Short_B'])
+        self.df['Candle_avr'] = Series.rolling(self.df['Candle'], window=c_avr_p, min_periods=c_avr_p).mean()
+        self.df['Long_Short_C'] = where(self.df.Candle >= l_s_c * self.df.Candle_avr, 'Long', '')
+        self.df['Long_Short_C'] = where(self.df.Candle <= s_s_c * self.df.Candle_avr, 'Short', self.df['Long_Short_C'])
+        self.df['Marubozu'] = where((self.df.Lower_shadow < 0.05*self.df.Candle) & (self.df.Upper_shadow < 0.05*self.df.Candle),'Marubozu','')
+        #self.df=self.df.drop('Candle_avr',1)
+        #self.df=self.df.drop('Body_avr',1)
 
     def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
-        umbrella_name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
-        if umbrella_name not in self.df:
-            self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+        pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+        if pin_name not in self.df:
+            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
-        umbrella_index = self.df.loc[(self.df[umbrella_name] == 'True')].index.tolist()
-        self.df['Hammer_LR'] = None
-        for i in umbrella_index:
+        pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
+        self.df['Hammer'] = None
+        for i in pin_index:
             local_index=self.df.index.get_loc(i)
             if(local_index > lr_p+lr_ma_p-2):
                 if((self.df.Low[local_index] <= self.df.Low[local_index-1]) ):
                     if(confirmation_candle):
                         if(self.df.Low[local_index] <= self.df.Low[local_index+1]):
                             if(self.df[lr_name][local_index] < 0.0):
-                                self.df.set_value(self.df.index[local_index], 'Hammer_LR', 'True')
+                                self.df.set_value(self.df.index[local_index], 'Hammer', 'True')
                     else:
                         if(self.df[lr_name][local_index] < 0.0):
-                            self.df.set_value(self.df.index[local_index], 'Hammer_LR','True')
+                            self.df.set_value(self.df.index[local_index], 'Hammer','True')
 
     def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
-        umbrella_name = 'Umbrella_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
-        if umbrella_name not in self.df:
-            self.umbrella_candle(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+        pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+        if pin_name not in self.df:
+            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
-        umbrella_index = self.df.loc[(self.df[umbrella_name] == 'True')].index.tolist()
-        self.df['Hanging_Man_LR'] = None
-        for i in umbrella_index:
+        pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
+        self.df['Hanging_Man'] = None
+        for pin in pin_index:
+            i=self.df.index.get_loc(i)
+            if(i > lr_p+lr_ma_p-2):
+                if((self.df.Open[i] > self.df.Open[i-1]) & (self.df.Open[i] > self.df.Close[i-1])):
+                    if(confirmation_candle):
+                        if((self.df.Close[i+1] < self.df.Open[i]) & (self.df.Close[i+1] < self.df.Close[i])):
+                            if (self.df[lr_name][i] > 0.0):
+                                self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
+                    else:
+                        if(self.df[lr_name][i] > 0.0):
+                            self.df.set_value(self.df.index[i], 'Hanging_Man','True')
+
+    def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+        inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u,lss=l_u)
+        if inverted_pin_name not in self.df:
+            self.inverted_pin_bar(upper_shadow_greater_body=u_u,lower_shadow_size=l_u)
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
+        inverted_pin_index = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
+        self.df['Shooting_star'] = None
+        for i in pin_index:
             local_index=self.df.index.get_loc(i)
             if(local_index > lr_p+lr_ma_p-2):
-                if((self.df.Open[local_index] > self.df.Open[local_index-1]) & (self.df.Open[local_index] > self.df.Close[local_index-1])):
-                    if(confirmation_candle):
-                        if((self.df.Close[local_index+1] < self.df.Open[local_index]) & (self.df.Close[local_index+1] < self.df.Close[local_index])):
-                            if (self.df[lr_name][local_index] > 0.0):
-                                self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR', 'True')
-                    else:
-                        if(self.df[lr_name][local_index] > 0.0):
-                            self.df.set_value(self.df.index[local_index], 'Hanging_Man_LR','True')
+
+
 
     def bullish_engulfing(self,lr_p=5,lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
@@ -381,8 +408,8 @@ class Tools_cl(object):
                     if((self.df.Open[i] <= self.df.Open[i-1]) & (self.df.Open[i] <= self.df.Close[i-1])):
                         if ((self.df.Close[i] > self.df.Open[i - 1]) & (self.df.Close[i] > self.df.Close[i - 1])):
                             if(self.df[lr_name][i-1] < 0.0):
-                                self.df.set_value(self.df.index[i-1],'Bullish_engulfing', 'True')
-                                self.df.set_value(self.df.index[i],'Bullish_engulfing', 'True')
+                                self.df.set_value(self.df.index[i-1],'Bullish_engulfing', 'BE1')
+                                self.df.set_value(self.df.index[i],'Bullish_engulfing', 'BE2')
 
     def bearish_engulfing(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
@@ -396,8 +423,8 @@ class Tools_cl(object):
                     if ((self.df.Open[i] >= self.df.Open[i - 1]) & (self.df.Open[i] >= self.df.Close[i - 1])):
                         if ((self.df.Close[i] < self.df.Open[i - 1]) & (self.df.Close[i] < self.df.Close[i - 1])):
                             if (self.df[lr_name][i - 1] > 0.0):
-                                self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'True')
-                                self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'True')
+                                self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'BE1')
+                                self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'BE2')
 
     def dark_cloud_cover(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
@@ -411,8 +438,8 @@ class Tools_cl(object):
                      if(self.df.Open[i] > self.df.Close[i-1]):
                          if((self.df.Close[i] < (self.df.Open[i-1]+(self.df.Body[i-1]/2))) & (self.df.Close[i] >= self.df.Open[i-1])):
                              if (self.df[lr_name][i-1] > 0.0):
-                                 self.df.set_value(self.df.index[i-1], 'Dark_cloud_cover', 'True')
-                                 self.df.set_value(self.df.index[i], 'Dark_cloud_cover', 'True')
+                                 self.df.set_value(self.df.index[i-1], 'Dark_cloud_cover', 'DC1')
+                                 self.df.set_value(self.df.index[i], 'Dark_cloud_cover', 'DC2')
 
     def piercing_pattern (self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
@@ -426,30 +453,180 @@ class Tools_cl(object):
                     if(self.df.Open[i] < self.df.Close[i-1]):
                         if((self.df.Close[i] > (self.df.Close[i-1] + self.df.Body[i-1]/2)) & (self.df.Close[i] < self.df.Open[i-1])):
                             if(self.df[lr_name][i-1] < 0.0):
-                                self.df.set_value(self.df.index[i - 1], 'Piercing_pattern', 'True')
-                                self.df.set_value(self.df.index[i], 'Piercing_pattern', 'True')
+                                self.df.set_value(self.df.index[i - 1], 'Piercing_pattern', 'PP1')
+                                self.df.set_value(self.df.index[i], 'Piercing_pattern', 'PP2')
 
-    def on_neck(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+    def on_neck(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close',close_delta=0.2):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
-        self.df['On_neck'] = None
+        self.df['On_Neck'] = None
         for bull_index in Bull_indexes:
             i = self.df.index.get_loc(bull_index)
             if (i > lr_p + lr_ma_p - 2):
-                if (self.df.Candle_direction[i - 1] == 'Bear'):
-                    if(self.df.Body[i] <= (self.df.MA_Body_23[i - 1] / 2.0)):
-                        if(self.df.High[i] <= self.df.Close[i-1]):
+                if(self.df.Shadow_lenght[i] <= 2.0*self.df.Body[i]):
+                    if (self.df.Candle_direction[i-1] == 'Bear'):
+                        if (self.df[lr_name][i] < 0.0):
                             if(self.df.Open[i] < self.df.Low[i-1]):
-                                if(self.df.Close[i] < self.df.Close[i-1]):
-                                    self.df.set_value(self.df.index[i - 1], 'On_neck', 'True')
-                                    self.df.set_value(self.df.index[i], 'On_neck', 'True')
+                                p_delta = ((close_delta * self.df.Lower_shadow[i-1])+self.df.Low[i-1]).round(decimals=2);
+                                m_delta = (self.df.Low[i-1] - (close_delta * self.df.Lower_shadow[i-1])).round(decimals=2);
+                                if(m_delta <= self.df.Close[i] <= p_delta):
+                                    self.df.set_value(self.df.index[i - 1], 'On_Neck', 'ON1')
+                                    self.df.set_value(self.df.index[i], 'On_Neck', 'ON2')
 
-    def in_neck(self):
-        pass
+    def in_neck(self, lr_p=5, lr_ma_p=20, lr_ma_s='Close', close_delta=0.2):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['In_Neck'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df.Shadow_lenght[i] <= 2.0 * self.df.Body[i]):
+                    if (self.df.Candle_direction[i-1] == 'Bear'):
+                        if (self.df[lr_name][i] < 0.0):
+                            if (self.df.Open[i] < self.df.Low[i - 1]):
+                                m_delta = ((close_delta * self.df.Lower_shadow[i - 1]) + self.df.Low[i - 1]).round(decimals=2);
+                                p_delta = (self.df.Close[i - 1] + (close_delta * self.df.Body[i - 1])).round(decimals=2);
+                                if (m_delta <= self.df.Close[i] <= p_delta):
+                                    self.df.set_value(self.df.index[i - 1], 'In_Neck', 'IN1')
+                                    self.df.set_value(self.df.index[i], 'In_Neck', 'IN2')
 
-    def thrusting_pattern(self):
-        pass
+    def thrusting_pattern(self, lr_p=5, lr_ma_p=20, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['Thrusting_pattern'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df.Candle_direction[i-1] == 'Bear'):
+                     if (self.df[lr_name][i] < 0.0):
+                         if (self.df.Open[i] < self.df.Low[i - 1]):
+                             p_delta = (self.df.Close[i-1] + (0.5 * self.df.Body[i-1])).round(decimals=2);
+                             m_delta = self.df.Close[i-1]
+                             if (m_delta < self.df.Close[i] < p_delta):
+                                 self.df.set_value(self.df.index[i-1], 'Thrusting_pattern', 'TP1')
+                                 self.df.set_value(self.df.index[i], 'Thrusting_pattern', 'TP2')
+
+    def morning_star(self,lr_p=5, lr_ma_p=5, lr_ma_s='Close', second_gap=False):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['Morning_star'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i-2] < 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bear'):
+                        if ((self.df.Candle_direction[i-1] != 'Doji') & (self.df.Long_Short_B[i-1] == 'Short')):
+                            if((self.df.Close[i-2] > self.df.Open[i-1]) & (self.df.Close[i-2] > self.df.Close[i-1])):
+                                if(self.df.Close[i] >= (self.df.Close[i-2]+(self.df.Body[i-2]/2)).round(decimals=2)):
+                                    if(second_gap):
+                                        if((self.df.Open[i] > self.df.Open[i-1]) & (self.df.Open[i] > self.df.Close[i-1])):
+                                            self.df.set_value(self.df.index[i-2], 'Morning_star', 'MS1g')
+                                            self.df.set_value(self.df.index[i-1], 'Morning_star', 'MS2g')
+                                            self.df.set_value(self.df.index[i], 'Morning_star', 'MS3g')
+                                    else:
+                                        if(self.df.Open[i] >= self.df.Low[i-1]):
+                                            self.df.set_value(self.df.index[i-2], 'Morning_star', 'MS1')
+                                            self.df.set_value(self.df.index[i-1], 'Morning_star', 'MS2')
+                                            self.df.set_value(self.df.index[i], 'Morning_star', 'MS3')
+
+    def evening_star(self,lr_p=5, lr_ma_p=5, lr_ma_s='Close', second_gap=False):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
+        self.df['Evening_star'] = None
+        for bear_index in Bear_indexes:
+            i = self.df.index.get_loc(bear_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i-2] > 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bull'):
+                        if ((self.df.Candle_direction[i-1] != 'Doji') & (self.df.Long_Short_B[i-1] == 'Short')):
+                            if((self.df.Close[i-2] < self.df.Open[i-1]) & (self.df.Close[i-2] < self.df.Close[i-1])):
+                                if(self.df.Close[i] <= (self.df.Close[i-2]-(self.df.Body[i-2]/2)).round(decimals=2)):
+                                    if(second_gap):
+                                        if((self.df.Open[i] < self.df.Open[i-1]) & (self.df.Open[i] < self.df.Close[i-1])):
+                                            self.df.set_value(self.df.index[i-2], 'Evening_star', 'ES1g')
+                                            self.df.set_value(self.df.index[i-1], 'Evening_star', 'ES2g')
+                                            self.df.set_value(self.df.index[i], 'Evening_star', 'ES3g')
+                                    else:
+                                        if(self.df.Open[i] <= self.df.High[i-1]):
+                                            self.df.set_value(self.df.index[i-2], 'Evening_star', 'ES1')
+                                            self.df.set_value(self.df.index[i-1], 'Evening_star', 'ES2')
+                                            self.df.set_value(self.df.index[i], 'Evening_star', 'ES3')
+
+    def doji_morning_star(self,lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['Doji_morning_star'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 2] < 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bear'):
+                        if (self.df.Candle_direction[i-1] == 'Doji'):
+                            if((self.df.Close[i-2] > self.df.Open[i-1])&(self.df.Close[i-2] > self.df.Close[i-1])):
+                                if(self.df.High[i-1] > self.df.Low[i-2]):
+                                    if((self.df.Open[i] > self.df.Open[i-1]) & (self.df.Open[i] > self.df.Close[i-1])):
+                                        if(self.df.Close[i] >= (self.df.Close[i-2]+(self.df.Body[i-2]/2)).round(decimals=2)):
+                                            self.df.set_value(self.df.index[i - 2], 'Doji_morning_star', 'DMS1')
+                                            self.df.set_value(self.df.index[i - 1], 'Doji_morning_star', 'DMS2')
+                                            self.df.set_value(self.df.index[i], 'Doji_morning_star', 'DMS3')
+
+    def doji_evening_star(self,lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
+        self.df['Doji_evening_star'] = None
+        for bear_index in Bear_indexes:
+            i = self.df.index.get_loc(bear_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i-2] > 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bull'):
+                        if (self.df.Candle_direction[i-1] == 'Doji'):
+                            if((self.df.Close[i-2] < self.df.Open[i-1]) & (self.df.Close[i-2] < self.df.Close[i-1])):
+                                if(self.df.Low[i-1] < self.df.High[i-2]):
+                                    if((self.df.Open[i] < self.df.Open[i-1]) & (self.df.Open[i] < self.df.Close[i-1])):
+                                        if(self.df.Close[i] <= (self.df.Close[i-2]-(self.df.Body[i-2]/2)).round(decimals=2)):
+                                            self.df.set_value(self.df.index[i-2], 'Doji_evening_star', 'DES1')
+                                            self.df.set_value(self.df.index[i-1], 'Doji_evening_star', 'DES2')
+                                            self.df.set_value(self.df.index[i], 'Doji_evening_star', 'DES3')
+
+    def abandoned_baby_on_uptrend(self,lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
+        self.df['Abandoned_baby_on_uptrend'] = None
+        for bear_index in Bear_indexes:
+            i = self.df.index.get_loc(bear_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i-2] > 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bull'):
+                        if (self.df.Candle_direction[i-1] == 'Doji'):
+                            if((self.df.High[i-2] < self.df.Low[i-1]) & (self.df.High[i] < self.df.Low[i-1])):
+                                self.df.set_value(self.df.index[i - 2], 'Abandoned_baby_on_uptrend', 'ABOU1')
+                                self.df.set_value(self.df.index[i - 1], 'Abandoned_baby_on_uptrend', 'ABOU2')
+                                self.df.set_value(self.df.index[i], 'Abandoned_baby_on_uptrend', 'ABOU3')
+
+    def abandoned_baby_on_downtrend(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['Abandoned_baby_on_downtrend'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 2] < 0.0):
+                    if(self.df.Candle_direction[i-2] == 'Bear'):
+                        if (self.df.Candle_direction[i-1] == 'Doji'):
+                            if((self.df.Low[i-2] > self.df.High[i-1]) & (self.df.Low[i] > self.df.High[i-1])):
+                                self.df.set_value(self.df.index[i - 2], 'Abandoned_baby_on_downtrend', 'ABOD1')
+                                self.df.set_value(self.df.index[i - 1], 'Abandoned_baby_on_downtrend', 'ABOD2')
+                                self.df.set_value(self.df.index[i], 'Abandoned_baby_on_downtrend', 'ABOD3')
+
 
     def price_level_analysis(self):#how much cs at each price level
         pass
