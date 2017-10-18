@@ -342,7 +342,7 @@ class Tools_cl(object):
         #self.df=self.df.drop('Candle_avr',1)
         #self.df=self.df.drop('Body_avr',1)
 
-    def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+    def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
         if pin_name not in self.df:
             self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
@@ -350,19 +350,15 @@ class Tools_cl(object):
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
         self.df['Hammer'] = None
-        for i in pin_index:
-            local_index=self.df.index.get_loc(i)
-            if(local_index > lr_p+lr_ma_p-2):
-                if((self.df.Low[local_index] <= self.df.Low[local_index-1]) ):
-                    if(confirmation_candle):
-                        if(self.df.Low[local_index] <= self.df.Low[local_index+1]):
-                            if(self.df[lr_name][local_index] < 0.0):
-                                self.df.set_value(self.df.index[local_index], 'Hammer', 'True')
-                    else:
-                        if(self.df[lr_name][local_index] < 0.0):
-                            self.df.set_value(self.df.index[local_index], 'Hammer','True')
+        for pin in pin_index:
+            i=self.df.index.get_loc(pin)
+            if(i > lr_p+lr_ma_p-2):
+                if(self.df.Long_Short_B[i] == 'Short'):
+                    if(self.df.Upper_shadow[i] <= self.df.Body[i]):
+                        if (self.df.Body[i] <= 0.5 * self.df.Lower_shadow):
+                            self.df.set_value(self.df.index[i], 'Hammer', 'True')
 
-    def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+    def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False): #body above trendline???
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
         if pin_name not in self.df:
             self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
@@ -371,18 +367,14 @@ class Tools_cl(object):
         pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
         self.df['Hanging_Man'] = None
         for pin in pin_index:
-            i=self.df.index.get_loc(i)
+            i=self.df.index.get_loc(pin)
             if(i > lr_p+lr_ma_p-2):
-                if((self.df.Open[i] > self.df.Open[i-1]) & (self.df.Open[i] > self.df.Close[i-1])):
-                    if(confirmation_candle):
-                        if((self.df.Close[i+1] < self.df.Open[i]) & (self.df.Close[i+1] < self.df.Close[i])):
-                            if (self.df[lr_name][i] > 0.0):
-                                self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
-                    else:
-                        if(self.df[lr_name][i] > 0.0):
-                            self.df.set_value(self.df.index[i], 'Hanging_Man','True')
+                if(self.df.Long_Short_B[i] == 'Short'):
+                    if(self.df.Upper_shadow[i] <= self.df.Body[i]):
+                        if (self.df.Body[i] <= 0.5 * self.df.Lower_shadow):
+                            self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
 
-    def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',confirmation_candle = False):
+    def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u,lss=l_u)
         if inverted_pin_name not in self.df:
             self.inverted_pin_bar(upper_shadow_greater_body=u_u,lower_shadow_size=l_u)
@@ -390,11 +382,31 @@ class Tools_cl(object):
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         inverted_pin_index = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
         self.df['Shooting_star'] = None
-        for i in pin_index:
-            local_index=self.df.index.get_loc(i)
-            if(local_index > lr_p+lr_ma_p-2):
+        for pin in inverted_pin_index:
+            i=self.df.index.get_loc(pin)
+            if(i > lr_p+lr_ma_p-2):
+                if(self.df[lr_name][i] > 0.0):
+                   if(self.df.Long_Short_B[i] == 'Short'):
+                       if(self.df.Lower_shadow[i] <= self.df.Body[i]):
+                           if(self.df.Body[i] <= 0.5*self.df.Upper_shadow):
+                              self.df.set_value(self.df.index[i], 'Shooting_star', 'True')
 
-
+    def inverted_hammer (self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
+        inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u, lss=l_u)
+        if inverted_pin_name not in self.df:
+            self.inverted_pin_bar(upper_shadow_greater_body=u_u, lower_shadow_size=l_u)
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        inverted_pin_index = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
+        self.df['Inverted_hammer'] = None
+        for pin in inverted_pin_index:
+            i=self.df.index.get_loc(pin)
+            if(i > lr_p+lr_ma_p-2):
+                if(self.df[lr_name][i] < 0.0):
+                    if (self.df.Long_Short_B[i] == 'Short'):
+                        if (self.df.Lower_shadow[i] <= self.df.Body[i]):
+                            if (self.df.Body[i] <= 0.5 * self.df.Upper_shadow):
+                                self.df.set_value(self.df.index[i], 'Inverted_hammer', 'True')
 
     def bullish_engulfing(self,lr_p=5,lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
@@ -626,6 +638,32 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 2], 'Abandoned_baby_on_downtrend', 'ABOD1')
                                 self.df.set_value(self.df.index[i - 1], 'Abandoned_baby_on_downtrend', 'ABOD2')
                                 self.df.set_value(self.df.index[i], 'Abandoned_baby_on_downtrend', 'ABOD3')
+
+    def bullish_harami(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['Bullish_harami'] = None
+        for bull_index in Bull_indexes:
+            i = self.df.index.get_loc(bull_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 1] < 0.0):
+                    if(self.df.Candle_direction[i-1] == 'Bear'):
+                        if(self.df.Close[i-1] < self.df.Open[i]):
+                            self.df.set_value(self.df.index[i], 'Bullish_harami', 'True')
+
+    def bearish_harami(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
+        self.df['Bearish_harami'] = None
+        for bear_index in Bear_indexes:
+            i = self.df.index.get_loc(bear_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 1] > 0.0):
+                    if(self.df.Candle_direction[i-1] == 'Bull'):
+                        if(self.df.Close[i-1] > self.df.Open[i]):
+                            self.df.set_value(self.df.index[i], 'Bearish_harami', 'True')
 
 
     def price_level_analysis(self):#how much cs at each price level
