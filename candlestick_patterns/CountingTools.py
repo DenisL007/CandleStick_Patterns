@@ -650,7 +650,8 @@ class Tools_cl(object):
                 if (self.df[lr_name][i - 1] < 0.0):
                     if(self.df.Candle_direction[i-1] == 'Bear'):
                         if(self.df.Close[i-1] < self.df.Open[i]):
-                            self.df.set_value(self.df.index[i], 'Bullish_harami', 'True')
+                            self.df.set_value(self.df.index[i-1], 'Bullish_harami', 'BH1')
+                            self.df.set_value(self.df.index[i], 'Bullish_harami', 'BH2')
 
     def bearish_harami(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
@@ -663,7 +664,36 @@ class Tools_cl(object):
                 if (self.df[lr_name][i - 1] > 0.0):
                     if(self.df.Candle_direction[i-1] == 'Bull'):
                         if(self.df.Close[i-1] > self.df.Open[i]):
-                            self.df.set_value(self.df.index[i], 'Bearish_harami', 'True')
+                            self.df.set_value(self.df.index[i-1], 'Bearish_harami', 'BH1')
+                            self.df.set_value(self.df.index[i], 'Bearish_harami', 'BH2')
+
+    def bullish_harami_cross(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Doji_indexes = self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        self.df['Bullish_harami_cross'] = None
+        for doji_index in Doji_indexes:
+            i = self.df.index.get_loc(doji_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 1] < 0.0):
+                    if(self.df.Candle_direction[i-1] == 'Bull'):
+                        if(self.df.Close[i-1] < self.df.Open[i]):
+                            self.df.set_value(self.df.index[i], 'Bullish_harami_cross', 'BHC1')
+                            self.df.set_value(self.df.index[i], 'Bullish_harami_cross', 'BHC2')
+
+    def bearish_harami_cross(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        Doji_indexes = self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        self.df['Bearish_harami_cross'] = None
+        for doji_index in Doji_indexes:
+            i = self.df.index.get_loc(doji_index)
+            if (i > lr_p + lr_ma_p - 2):
+                if (self.df[lr_name][i - 1] > 0.0):
+                    if (self.df.Candle_direction[i-1] == 'Bear'):
+                        if (self.df.Close[i-1] > self.df.Open[i]):
+                            self.df.set_value(self.df.index[i-1], 'Bearish_harami_cross', 'BHC1')
+                            self.df.set_value(self.df.index[i], 'Bearish_harami_cross', 'BHC2')
 
 
     def price_level_analysis(self):#how much cs at each price level
