@@ -200,6 +200,9 @@ class Tools_cl(object):
 
 
 
+
+
+
     def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
         if pin_name not in self.df:
