@@ -39,6 +39,10 @@ class Tools_cl(object):
         #self.doji_evening_star()
         #self.abandoned_baby_on_uptrend()
         #self.abandoned_baby_on_downtrend()
+        #self.tweezers_bottom()
+        #self.tweezers_top()
+        self.bearish_belt_hold()
+        self.bullish_belt_hold()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -50,252 +54,25 @@ class Tools_cl(object):
         self.df.to_csv('df.csv')
 
 
-    def plot_candles(sefl,pricing, title=None, volume_bars=False,o=False,t=False, ot=False,color_function=None, technicals=None):
-        """
-        Args:
-          pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
-          title: An optional title for the chart
-          volume_bars: If True, plots volume bars
-          color_function: A function which, given a row index and price series, returns a candle color.
-          technicals: A list of additional data series to add to the chart.  Must be the same length as pricing.
 
-          technicals:
-          SMA = talib.SMA(last_hour['close_price'].as_matrix())
-          plot_candles(last_hour, title='1 minute candles + SMA', technicals=[SMA])
 
-          color_function:
-          def highlight_dojis(index, open_price, close_price, low, high):
-          return 'm' if dojis[index] else 'k'
-          plot_candles(last_hour,title='Doji patterns highlighted',color_function=highlight_dojis)
-        """
-
-        def default_color(index, Open, Close, Low, High):
-            return 'r' if Open[index] > Close[index] else 'g'
-
-        color_function = color_function or default_color
-        technicals = technicals or []
-        open_price = pricing['Open']
-        close_price = pricing['Close']
-        low = pricing['Low']
-        high = pricing['High']
-        oc_min = concat([open_price, close_price], axis=1).min(axis=1)
-        oc_max = concat([open_price, close_price], axis=1).max(axis=1)
-
-        if (ot):
-            fig, (ax1, ax3, ax4) = plt.subplots(3,1, sharex=True, gridspec_kw={'height_ratios': [3, 1, 1]})
-        elif (o | t):
-            fig, (ax1, ax3) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
-        elif volume_bars:
-            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
-        else:
-            fig, ax1 = plt.subplots(1, 1)
-        if title:
-            ax1.set_title(title)
-        x = arange(len(pricing))
-        candle_colors = [color_function(i, open_price, close_price, low, high) for i in x]
-        candles = ax1.bar(x, oc_max - oc_min, bottom=oc_min, color=candle_colors, linewidth=0)
-        lines = ax1.vlines(x + 0.0, low, high, color=candle_colors, linewidth=1)
-        ax1.xaxis.grid(False)
-        ax1.xaxis.set_tick_params(which='major', length=3.0, direction='in', top='off')
-        # Assume minute frequency if first two bars are in the same day.
-        frequency = 'minute' if (pricing.index[1] - pricing.index[0]).days == 0 else 'day'
-        time_format = '%d-%m-%Y'
-        if frequency == 'minute':
-            time_format = '%H:%M'
-        # Set X axis tick labels.
-        plt.xticks(x, [date.strftime(time_format) for date in pricing.index], rotation='vertical')
-        for indicator in technicals:
-            ax1.plot(x, indicator)
-
-        if ot:
-            omcrtd = pricing['omcrtd_trend']
-            tmcrtd = pricing['tmcrtd_trend']
-            ax3.bar(x,omcrtd)
-            omcrtd_title = 'omcrtd'
-            ax3.set_title(omcrtd_title)
-            ax3.xaxis.grid(False)
-            ax4.bar(x,tmcrtd)
-            tmcrtd_title = 'tmcrtd'
-            ax4.set_title(tmcrtd_title)
-            ax4.xaxis.grid(False)
-
-        if o:
-            omcrtd = pricing['omcrtd_trend']
-            ax3.bar(x,omcrtd)
-            omcrtd_title = 'omcrtd'
-            ax3.set_title(omcrtd_title)
-            ax3.xaxis.grid(False)
-
-        if t:
-            tmcrtd = pricing['tmcrtd_trend']
-            ax3.bar(x,tmcrtd)
-            tmcrtd_title = 'tmcrtd'
-            ax3.set_title(tmcrtd_title)
-            ax3.xaxis.grid(False)
-
-        if volume_bars:
-            volume = pricing['Volume']
-            volume_scale = None
-            scaled_volume = volume
-            if volume.max() > 1000000:
-                volume_scale = 'M'
-                scaled_volume = volume / 1000000
-            elif volume.max() > 1000:
-                volume_scale = 'K'
-                scaled_volume = volume / 1000
-            ax2.bar(x, scaled_volume, color=candle_colors)
-            volume_title = 'Volume'
-            if volume_scale:
-                volume_title = 'Volume (%s)' % volume_scale
-            ax2.set_title(volume_title)
-            ax2.xaxis.grid(False)
-        plt.show()
-
-    def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
-        self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
-        #self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
-        self.df['omcrtd_trend'] = where(self.df[source] > self.df['omcrtd_ma'], 1, 0)
-        self.df['omcrtd_trend'] = where(self.df[source] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
-        #find trend change point
-        omcrtd_trend = self.df['omcrtd_trend']
-        bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
-        bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
-        self.df['omcrtd_bounds'] = bounds
-        bounds_idx = where(bounds)[0]
-        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcrtd_trend[idx] == omcrtd_trend[idx:idx + min_days_trend])])
-        # Make sure start and end are included
-        if relevant_bounds_idx[0] != 0:
-            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
-        if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
-            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
-        # write data to dataframe
-        temp_array = zeros(len(self.df),dtype=bool)
-        for index in range (len(relevant_bounds_idx)):
-            temp_array[relevant_bounds_idx[index]] = 'True'
-        self.df['omcrtd_relevant_bounds'] = temp_array
-        #self.df['omcrtd_plot'] = nan
-        self.df.loc[self.df['omcrtd_relevant_bounds'] == True , 'omcrtd_plot'] = self.df.Close
-        # Iterate segments + plot
-        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
-        #    # Slice segment
-        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
-        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
-        #    # Plot data
-        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
-        #    plt.plot(segment.index, segment['Close'], color=data_color)
-        #    # Plot fit
-        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
-        #    fit_val = coef * x + intercept
-        #    fit_color = 'yellow' if coef > 0 else 'blue'
-        #    plt.plot(segment.index, fit_val, color=fit_color)
-
-    def tree_ma_cross_trend_detection(self,source='Close',p_s=20,p_m=50,p_l=200,min_days_trend=2): #min_days_trend - minimum days with specific trend direction to count as trend change
-        self.df['tmcrtd_ma_l'] = Series.rolling(self.df[source], window=p_l, min_periods=p_l).mean() # can be changed to EMA
-        self.df['tmcrtd_ma_m'] = Series.rolling(self.df[source], window=p_m, min_periods=p_m).mean() # can be changed to EMA
-        self.df['tmcrtd_ma_s'] = Series.rolling(self.df[source], window=p_s, min_periods=p_s).mean() # can be changed to EMA
-        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] > self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] > self.df['tmcrtd_ma_l'])),1,0)
-        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] < self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] < self.df['tmcrtd_ma_l'])),-1,self.df['tmcrtd_trend'])
-        tmcrtd_trend = self.df['tmcrtd_trend']
-        #find trend change point
-        bounds = (diff(tmcrtd_trend) != 0) & (tmcrtd_trend[1:] != 0)
-        bounds = concatenate(([tmcrtd_trend[0] != 0], bounds))
-        self.df['tmcrtd_bounds'] = bounds
-        bounds_idx = where(bounds)[0]
-        relevant_bounds_idx = array(
-            [idx for idx in bounds_idx if all(tmcrtd_trend[idx] == tmcrtd_trend[idx:idx + min_days_trend])])
-        # Make sure start and end are included
-        if relevant_bounds_idx[0] != 0:
-            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
-        if relevant_bounds_idx[-1] != len(tmcrtd_trend) - 1:
-            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(tmcrtd_trend) - 1]))
-        # write data to dataframe
-        temp_array = zeros(len(self.df), dtype=bool)
-        for index in range(len(relevant_bounds_idx)):
-            temp_array[relevant_bounds_idx[index]] = 'True'
-        self.df['tmcrtd_relevant_bounds'] = temp_array
-
-    def one_ma_cross_volume_trend_detection(self,source='Volume',period=20,min_days_trend=0):
-        self.df['omcvrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
-        #self.df['omcvrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
-        self.df['omcvrtd_trend'] = where(self.df[source] > self.df['omcvrtd_ma'], 1, 0)
-        self.df['omcvrtd_trend'] = where(self.df[source] < self.df['omcvrtd_ma'], -1, self.df['omcvrtd_trend'])
-        #find trend change point
-        omcvrtd_trend = self.df['omcvrtd_trend']
-        bounds = (diff(omcvrtd_trend) != 0) & (omcvrtd_trend[1:] != 0)
-        bounds = concatenate(([omcvrtd_trend[0] != 0], bounds))
-        self.df['omcvrtd_bounds'] = bounds
-        bounds_idx = where(bounds)[0]
-        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcvrtd_trend[idx] == omcvrtd_trend[idx:idx + min_days_trend])])
-        # Make sure start and end are included
-        if relevant_bounds_idx[0] != 0:
-            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
-        if relevant_bounds_idx[-1] != len(omcvrtd_trend) - 1:
-            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcvrtd_trend) - 1]))
-        # write data to dataframe
-        temp_array = zeros(len(self.df),dtype=bool)
-        for index in range (len(relevant_bounds_idx)):
-            temp_array[relevant_bounds_idx[index]] = 'True'
-        self.df['omcvrtd_relevant_bounds'] = temp_array
-        #self.df['omcrtd_plot'] = nan
-        self.df.loc[self.df['omcvrtd_relevant_bounds'] == True , 'omcvrtd_plot'] = self.df.Volume
-        # Iterate segments + plot
-        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
-        #    # Slice segment
-        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
-        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
-        #    # Plot data
-        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
-        #    plt.plot(segment.index, segment['Close'], color=data_color)
-        #    # Plot fit
-        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
-        #    fit_val = coef * x + intercept
-        #    fit_color = 'yellow' if coef > 0 else 'blue'
-        #    plt.plot(segment.index, fit_val, color=fit_color)
-        # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
-
-    def zigzig(self,deviation=5,backstep=1,depth=1):
-        zz_name ='zz_{deviation}%'.format(deviation=deviation)
-        temp_array = zeros(len(self.df))
-        pl=self.df.Low
-        ph=self.df.High
-        h,hp,l,lp=ph[0],0,pl[0],0
-        el,eh,elp,ehp = pl[0],ph[0],0,0
-        ehf,elf=1,1
-        dev=deviation/100
-        for i in range(len(self.df)):
-            if(((ph[i]>=h) | (~ehf & elf)) & ( i-elp>= backstep) & ( i-ehp>= depth)):
-                h,hp=ph[i],i
-            if(((pl[i]) <= l) | (ehf & ~elf) & (i-ehp>= backstep) & ( i-elp>= depth)):
-                l,lp=pl[i],i
-            if (((1-dev) * h > pl[i]) & ehf & ( i-hp>= backstep) & ( i-ehp>= depth)):
-                ehf,elf=0,1
-                eh = h
-                ehp=hp
-                h, hp, l, lp = ph[i], i,pl[i], i
-                temp_array[ehp]=1
-            if (((1+dev) * l < ph[i]) & elf & ( i-lp>= backstep) & ( i-elp>= depth)):
-                ehf, elf = 1, 0
-                el = l
-                elp=lp
-                h, hp, l, lp = ph[i], i,pl[i], i
-                temp_array[elp]=-1
-        self.df.loc[temp_array == 1 , zz_name] = self.df.High
-        self.df.loc[temp_array == -1, zz_name] = self.df.Low
-        self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
-        self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
-
-    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec='False',lr_p=0,lr_ma_p=0,lr_ma_s='Close'):
+    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec='False',lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji='False'):
         if(ma_p != 0):
             ma_name='MA_{source}_{period1}'.format(period1=ma_p,source=ma_s)
             if ma_name not in self.df:
                 self.moving_average(period=ma_p,source=ma_s)
-        if(candle_spec):
-            if (('Body' not in self.df) | ('Candle' not in self.df) | ('Candle_direction' not in self.df) | ('Lower_shadow' not in self.df) | ('Upper_shadow' not in self.df) | ('Long_Short' not in self.df) | ('Marubozu' not in self.df)):
-                self.candle_spec()
         if(lr_p != 0):
             lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
             if lr_name not in self.df:
                 self.ma_linear_regression(lr_period=lr_p,ma_period=lr_ma_p,ma_source=lr_ma_s)
+        if (candle_spec):
+            if (('Body' not in self.df) | ('Candle' not in self.df) | ('Candle_direction' not in self.df) | (
+                'Lower_shadow' not in self.df) | ('Upper_shadow' not in self.df) | ('Long_Short' not in self.df) | (
+                'Marubozu' not in self.df)):
+                self.candle_spec()
+        if(doji):
+            if('Doji_type' not in self.df):
+                self.doji_type()
 
     def moving_average(self,period=1,source='Close'):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
@@ -329,6 +106,7 @@ class Tools_cl(object):
         self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
         self.df['Candle_direction'] = where(self.df.Open < self.df.Close, 'Bull', 'Bear')
         self.df['Candle_direction'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) <= doji_size*(self.df.High-self.df.Low).round(decimals=2), 'Doji', self.df['Candle_direction'])
+
         self.df['Upper_shadow'] = where(self.df.Open >= self.df.Close,(self.df.High - self.df.Open).round(decimals=2),(self.df.High - self.df.Close).round(decimals=2))
         self.df['Lower_shadow'] = where(self.df.Open >= self.df.Close,(self.df.Close - self.df.Low).round(decimals=2),(self.df.Open - self.df.Low).round(decimals=2))
         self.df['Shadow_lenght'] = (self.df.Upper_shadow + self.df.Lower_shadow).round(decimals=2)
@@ -338,9 +116,89 @@ class Tools_cl(object):
         self.df['Candle_avr'] = Series.rolling(self.df['Candle'], window=c_avr_p, min_periods=c_avr_p).mean()
         self.df['Long_Short_C'] = where(self.df.Candle >= l_s_c * self.df.Candle_avr, 'Long', '')
         self.df['Long_Short_C'] = where(self.df.Candle <= s_s_c * self.df.Candle_avr, 'Short', self.df['Long_Short_C'])
-        self.df['Marubozu'] = where((self.df.Lower_shadow < 0.05*self.df.Candle) & (self.df.Upper_shadow < 0.05*self.df.Candle),'Marubozu','')
+        self.df['Marubozu'] = where((self.df.Lower_shadow == 0.0) & (self.df.Upper_shadow == 0.0),'Marubozu','')
         #self.df=self.df.drop('Candle_avr',1)
         #self.df=self.df.drop('Body_avr',1)
+
+    def doji_type(self,dr= 0.1):
+        self.check_column_exist(candle_spec='True')
+        indexes = self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        self.df['Doji_type'] = None
+        for index in indexes:
+            i =self.df.index.get_loc(index)
+            if(self.df.High[i] == self.df.Low[i]):
+                self.df.set_value(self.df.index[i], 'Doji_type', 'Flat')
+            elif((self.df.Upper_shadow[i] < dr * self.df.Candle[i]) & (self.df.Lower_shadow >= 0.5 * self.df.Candle)):
+                self.df.set_value(self.df.index[i], 'Doji_type', 'Dragonfly')
+            elif((self.df.Lower_shadow[i] < dr * self.df.Candle[i]) & (self.df.Upper_shadow >= 0.5 * self.df.Candle)):
+                self.df.set_value(self.df.index[i], 'Doji_type', 'Gravestone')
+            elif((self.df.Lower_shadow[i] > 0.35 * self.df.Candle[i]) & (self.df.Upper_shadow > 0.35 * self.df.Candle)):
+                self.df.set_value(self.df.index[i], 'Doji_type', 'Long_legged')
+
+    def black_spinning_top(self):
+        indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
+        self.df['Black_spinning_top'] = None
+        for index in indexes:
+            i =self.df.index.get_loc(index)
+            if((self.df.Lower_shadow > 0.0) | (self.df.Upper_shadow > 0.0)):
+                if((self.df.Body < self.df.Upper_shadow) | (self.df.Body < self.df.Lower_shadow)):
+                    self.df.set_value(self.df.index[i], 'Black_spinning_top', 'True')
+
+    def white_spinning_top(self):
+        indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
+        self.df['White_spinning_top'] = None
+        for index in indexes:
+            i =self.df.index.get_loc(index)
+            if((self.df.Lower_shadow > 0.0) | (self.df.Upper_shadow > 0.0)):
+                if((self.df.Body < self.df.Upper_shadow) | (self.df.Body < self.df.Lower_shadow)):
+                    self.df.set_value(self.df.index[i], 'White_spinning_top', 'True')
+
+    def bearish_belt_hold(self, ls=0.3, us=0.03 ):
+        self.check_column_exist(candle_spec='True')
+        self.df['Bearish_belt_hold'] = None
+        indexes = self.df.loc[(self.df.Candle_direction == 'Bear') & (self.df.Long_Short_B == 'Long') & (self.df.Long_Short_C == 'Long')].index.tolist()
+        for index in indexes:
+            i = self.df.index.get_loc(index)
+            print(bear)
+            if(self.df.Upper_shadow[i] <= us * self.df.Candle[i]):
+                print(self.df.Upper_shadow[i])
+                print(self.df.Candle[i])
+                print(us * self.df.Candle[i])
+                if(self.df.Lower_shadow[i] <= ls * self.df.Candle[i]):
+                    print(self.df.Lower_shadow[i])
+                    self.df.set_value(self.df.index[i], 'Bearish_belt_hold', 'True')
+
+    def bullish_belt_hold(self, ls=0.03, us=0.3 ):
+        self.check_column_exist(candle_spec='True')
+        self.df['Bullish_belt_hold'] = None
+        indexes = self.df.loc[(self.df.Candle_direction == 'Bull') & (self.df.Long_Short_B == 'Long') & (self.df.Long_Short_C == 'Long')].index.tolist()
+        for index in indexes:
+            i = self.df.index.get_loc(index)
+            if(self.df.Upper_shadow[i] <= us * self.df.Candle[i]):
+                if(self.df.Lower_shadow[i] <= ls * self.df.Candle[i]):
+                    self.df.set_value(self.df.index[i], 'Bearish_belt_hold', 'True')
+
+    def gapping_down_doji(self):
+        self.check_column_exist(doji='True')
+        self.df['Gapping_down_doji'] = None
+        indexes= self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        for index in indexes:
+            i = self.df.index.get_loc(index)
+            if(i > 0):
+                if((self.df.High[i] < self.df.Low[i-1]) & (self.df.Doji_type[i-1] != 'Flat')):
+                    self.df.set_value(self.df.index[i], 'Gapping_down_doji', 'True')
+
+    def gapping_up_doji(self):
+        self.check_column_exist(doji='True')
+        self.df['Gapping_up_doji'] = None
+        indexes= self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        for index in indexes:
+            i = self.df.index.get_loc(index)
+            if(i > 0):
+                if((self.df.Low[i] > self.df.High[i-1]) & (self.df.Doji_type[i-1] != 'Flat')):
+                    self.df.set_value(self.df.index[i], 'Gapping_up_doji', 'True')
+
+
 
     def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
@@ -695,6 +553,267 @@ class Tools_cl(object):
                             self.df.set_value(self.df.index[i-1], 'Bearish_harami_cross', 'BHC1')
                             self.df.set_value(self.df.index[i], 'Bearish_harami_cross', 'BHC2')
 
+    def tweezers_bottom(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        self.df['Tweezers_bottom'] = None
+        for i in range(lr_p + lr_ma_p - 2,len(self.df),1):
+            if (self.df[lr_name][i] < 0.0):
+                if((self.df.Candle_direction[i] != 'Doji_flat') & (self.df.Candle_direction[i+1] != 'Doji_flat')):
+                    if(self.df.Low[i] == self.df.Low[i+1]):
+                        self.df.set_value(self.df.index[i], 'Tweezers_bottom', 'TB1')
+                        self.df.set_value(self.df.index[i+1], 'Tweezers_bottom', 'TB2')
+
+    def tweezers_top(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+        lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        self.df['Tweezers_top'] = None
+        for i in range(lr_p + lr_ma_p - 2,len(self.df),1):
+            if (self.df[lr_name][i] > 0.0):
+                if((self.df.Candle_direction[i] != 'Doji_flat') & (self.df.Candle_direction[i+1] != 'Doji_flat')):
+                    if(self.df.High[i] == self.df.Hugh[i+1]):
+                        self.df.set_value(self.df.index[i], 'Tweezers_top', 'TT1')
+                        self.df.set_value(self.df.index[i+1], 'Tweezers_top', 'TT2')
+
+
+
+
+
+
+
+    def plot_candles(sefl,pricing, title=None, volume_bars=False,o=False,t=False, ot=False,color_function=None, technicals=None):
+        """
+        Args:
+          pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
+          title: An optional title for the chart
+          volume_bars: If True, plots volume bars
+          color_function: A function which, given a row index and price series, returns a candle color.
+          technicals: A list of additional data series to add to the chart.  Must be the same length as pricing.
+
+          technicals:
+          SMA = talib.SMA(last_hour['close_price'].as_matrix())
+          plot_candles(last_hour, title='1 minute candles + SMA', technicals=[SMA])
+
+          color_function:
+          def highlight_dojis(index, open_price, close_price, low, high):
+          return 'm' if dojis[index] else 'k'
+          plot_candles(last_hour,title='Doji patterns highlighted',color_function=highlight_dojis)
+        """
+
+        def default_color(index, Open, Close, Low, High):
+            return 'r' if Open[index] > Close[index] else 'g'
+
+        color_function = color_function or default_color
+        technicals = technicals or []
+        open_price = pricing['Open']
+        close_price = pricing['Close']
+        low = pricing['Low']
+        high = pricing['High']
+        oc_min = concat([open_price, close_price], axis=1).min(axis=1)
+        oc_max = concat([open_price, close_price], axis=1).max(axis=1)
+
+        if (ot):
+            fig, (ax1, ax3, ax4) = plt.subplots(3,1, sharex=True, gridspec_kw={'height_ratios': [3, 1, 1]})
+        elif (o | t):
+            fig, (ax1, ax3) = plt.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+        elif volume_bars:
+            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+        else:
+            fig, ax1 = plt.subplots(1, 1)
+        if title:
+            ax1.set_title(title)
+        x = arange(len(pricing))
+        candle_colors = [color_function(i, open_price, close_price, low, high) for i in x]
+        candles = ax1.bar(x, oc_max - oc_min, bottom=oc_min, color=candle_colors, linewidth=0)
+        lines = ax1.vlines(x + 0.0, low, high, color=candle_colors, linewidth=1)
+        ax1.xaxis.grid(False)
+        ax1.xaxis.set_tick_params(which='major', length=3.0, direction='in', top='off')
+        # Assume minute frequency if first two bars are in the same day.
+        frequency = 'minute' if (pricing.index[1] - pricing.index[0]).days == 0 else 'day'
+        time_format = '%d-%m-%Y'
+        if frequency == 'minute':
+            time_format = '%H:%M'
+        # Set X axis tick labels.
+        plt.xticks(x, [date.strftime(time_format) for date in pricing.index], rotation='vertical')
+        for indicator in technicals:
+            ax1.plot(x, indicator)
+
+        if ot:
+            omcrtd = pricing['omcrtd_trend']
+            tmcrtd = pricing['tmcrtd_trend']
+            ax3.bar(x,omcrtd)
+            omcrtd_title = 'omcrtd'
+            ax3.set_title(omcrtd_title)
+            ax3.xaxis.grid(False)
+            ax4.bar(x,tmcrtd)
+            tmcrtd_title = 'tmcrtd'
+            ax4.set_title(tmcrtd_title)
+            ax4.xaxis.grid(False)
+
+        if o:
+            omcrtd = pricing['omcrtd_trend']
+            ax3.bar(x,omcrtd)
+            omcrtd_title = 'omcrtd'
+            ax3.set_title(omcrtd_title)
+            ax3.xaxis.grid(False)
+
+        if t:
+            tmcrtd = pricing['tmcrtd_trend']
+            ax3.bar(x,tmcrtd)
+            tmcrtd_title = 'tmcrtd'
+            ax3.set_title(tmcrtd_title)
+            ax3.xaxis.grid(False)
+
+        if volume_bars:
+            volume = pricing['Volume']
+            volume_scale = None
+            scaled_volume = volume
+            if volume.max() > 1000000:
+                volume_scale = 'M'
+                scaled_volume = volume / 1000000
+            elif volume.max() > 1000:
+                volume_scale = 'K'
+                scaled_volume = volume / 1000
+            ax2.bar(x, scaled_volume, color=candle_colors)
+            volume_title = 'Volume'
+            if volume_scale:
+                volume_title = 'Volume (%s)' % volume_scale
+            ax2.set_title(volume_title)
+            ax2.xaxis.grid(False)
+        plt.show()
+
+    def one_ma_cross_trend_detection(self,source='Close',period=200,min_days_trend=2):#omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['omcrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
+        #self.df['omcrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
+        self.df['omcrtd_trend'] = where(self.df[source] > self.df['omcrtd_ma'], 1, 0)
+        self.df['omcrtd_trend'] = where(self.df[source] < self.df['omcrtd_ma'], -1, self.df['omcrtd_trend'])
+        #find trend change point
+        omcrtd_trend = self.df['omcrtd_trend']
+        bounds = (diff(omcrtd_trend) != 0) & (omcrtd_trend[1:] != 0)
+        bounds = concatenate(([omcrtd_trend[0] != 0], bounds))
+        self.df['omcrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcrtd_trend[idx] == omcrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(omcrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df),dtype=bool)
+        for index in range (len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['omcrtd_relevant_bounds'] = temp_array
+        #self.df['omcrtd_plot'] = nan
+        self.df.loc[self.df['omcrtd_relevant_bounds'] == True , 'omcrtd_plot'] = self.df.Close
+        # Iterate segments + plot
+        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
+        #    # Slice segment
+        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
+        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
+        #    # Plot data
+        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
+        #    plt.plot(segment.index, segment['Close'], color=data_color)
+        #    # Plot fit
+        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
+        #    fit_val = coef * x + intercept
+        #    fit_color = 'yellow' if coef > 0 else 'blue'
+        #    plt.plot(segment.index, fit_val, color=fit_color)
+
+    def tree_ma_cross_trend_detection(self,source='Close',p_s=20,p_m=50,p_l=200,min_days_trend=2): #min_days_trend - minimum days with specific trend direction to count as trend change
+        self.df['tmcrtd_ma_l'] = Series.rolling(self.df[source], window=p_l, min_periods=p_l).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_m'] = Series.rolling(self.df[source], window=p_m, min_periods=p_m).mean() # can be changed to EMA
+        self.df['tmcrtd_ma_s'] = Series.rolling(self.df[source], window=p_s, min_periods=p_s).mean() # can be changed to EMA
+        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] > self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] > self.df['tmcrtd_ma_l'])),1,0)
+        self.df['tmcrtd_trend'] = where( ((self.df['tmcrtd_ma_s'] < self.df['tmcrtd_ma_m']) & (self.df['tmcrtd_ma_m'] < self.df['tmcrtd_ma_l'])),-1,self.df['tmcrtd_trend'])
+        tmcrtd_trend = self.df['tmcrtd_trend']
+        #find trend change point
+        bounds = (diff(tmcrtd_trend) != 0) & (tmcrtd_trend[1:] != 0)
+        bounds = concatenate(([tmcrtd_trend[0] != 0], bounds))
+        self.df['tmcrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array(
+            [idx for idx in bounds_idx if all(tmcrtd_trend[idx] == tmcrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(tmcrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(tmcrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df), dtype=bool)
+        for index in range(len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['tmcrtd_relevant_bounds'] = temp_array
+
+    def one_ma_cross_volume_trend_detection(self,source='Volume',period=20,min_days_trend=0):
+        self.df['omcvrtd_ma'] = Series.rolling(self.df[source], window=period, min_periods=period).mean() # can be changed to EMA
+        #self.df['omcvrtd_ma'] = self.df['Close'].ewm(span=200,min_periods=200).mean()  # can be changed to EMA
+        self.df['omcvrtd_trend'] = where(self.df[source] > self.df['omcvrtd_ma'], 1, 0)
+        self.df['omcvrtd_trend'] = where(self.df[source] < self.df['omcvrtd_ma'], -1, self.df['omcvrtd_trend'])
+        #find trend change point
+        omcvrtd_trend = self.df['omcvrtd_trend']
+        bounds = (diff(omcvrtd_trend) != 0) & (omcvrtd_trend[1:] != 0)
+        bounds = concatenate(([omcvrtd_trend[0] != 0], bounds))
+        self.df['omcvrtd_bounds'] = bounds
+        bounds_idx = where(bounds)[0]
+        relevant_bounds_idx = array([idx for idx in bounds_idx if all(omcvrtd_trend[idx] == omcvrtd_trend[idx:idx + min_days_trend])])
+        # Make sure start and end are included
+        if relevant_bounds_idx[0] != 0:
+            relevant_bounds_idx = concatenate(([0], relevant_bounds_idx))
+        if relevant_bounds_idx[-1] != len(omcvrtd_trend) - 1:
+            relevant_bounds_idx = concatenate((relevant_bounds_idx, [len(omcvrtd_trend) - 1]))
+        # write data to dataframe
+        temp_array = zeros(len(self.df),dtype=bool)
+        for index in range (len(relevant_bounds_idx)):
+            temp_array[relevant_bounds_idx[index]] = 'True'
+        self.df['omcvrtd_relevant_bounds'] = temp_array
+        #self.df['omcrtd_plot'] = nan
+        self.df.loc[self.df['omcvrtd_relevant_bounds'] == True , 'omcvrtd_plot'] = self.df.Volume
+        # Iterate segments + plot
+        #for start_idx, end_idx in zip(relevant_bounds_idx[:-1], relevant_bounds_idx[1:]):
+        #    # Slice segment
+        #    segment = market_data.iloc[start_idx:end_idx + 1, :]
+        #    x = np.array(mdates.date2num(segment.index.to_pydatetime()))
+        #    # Plot data
+        #    data_color = 'green' if signal[start_idx] > 0 else 'red'
+        #    plt.plot(segment.index, segment['Close'], color=data_color)
+        #    # Plot fit
+        #    coef, intercept = np.polyfit(x, segment['Close'], 1)
+        #    fit_val = coef * x + intercept
+        #    fit_color = 'yellow' if coef > 0 else 'blue'
+        #    plt.plot(segment.index, fit_val, color=fit_color)
+        # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
+
+    def zigzig(self,deviation=5,backstep=1,depth=1):
+        zz_name ='zz_{deviation}%'.format(deviation=deviation)
+        temp_array = zeros(len(self.df))
+        pl=self.df.Low
+        ph=self.df.High
+        h,hp,l,lp=ph[0],0,pl[0],0
+        el,eh,elp,ehp = pl[0],ph[0],0,0
+        ehf,elf=1,1
+        dev=deviation/100
+        for i in range(len(self.df)):
+            if(((ph[i]>=h) | (~ehf & elf)) & ( i-elp>= backstep) & ( i-ehp>= depth)):
+                h,hp=ph[i],i
+            if(((pl[i]) <= l) | (ehf & ~elf) & (i-ehp>= backstep) & ( i-elp>= depth)):
+                l,lp=pl[i],i
+            if (((1-dev) * h > pl[i]) & ehf & ( i-hp>= backstep) & ( i-ehp>= depth)):
+                ehf,elf=0,1
+                eh = h
+                ehp=hp
+                h, hp, l, lp = ph[i], i,pl[i], i
+                temp_array[ehp]=1
+            if (((1+dev) * l < ph[i]) & elf & ( i-lp>= backstep) & ( i-elp>= depth)):
+                ehf, elf = 1, 0
+                el = l
+                elp=lp
+                h, hp, l, lp = ph[i], i,pl[i], i
+                temp_array[elp]=-1
+        self.df.loc[temp_array == 1 , zz_name] = self.df.High
+        self.df.loc[temp_array == -1, zz_name] = self.df.Low
+        self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
+        self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
 
     def price_level_analysis(self):#how much cs at each price level
         pass
