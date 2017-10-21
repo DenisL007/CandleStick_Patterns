@@ -78,15 +78,15 @@ class Tools_cl(object):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
 
-    def pin_bar(self,lower_shadow_greater_body=2.0,upper_shadow_size=0.2):
+    def pin_bar(self,lower_shadow_greater_body=2.0,upper_shadow_greater_body=1.0):
         self.check_column_exist(candle_spec='True')
         name = 'Pin_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
-        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_size * self.df.Candle)), name] = 'True'
+        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_greater_body * self.df.Body)), name] = 'True'
 
-    def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_size=0.2):
+    def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_greater_body=1.0):
         self.check_column_exist(candle_spec='True')
         name = 'Inverted_pin_{lsgb}_{uss}'.format(usgb=upper_shadow_greater_body, lss=lower_shadow_size)
-        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Upper_shadow >= upper_shadow_greater_body * self.df.Body) & (self.df.Lower_shadow <= lower_shadow_size * self.df.Candle)), name] = 'True'
+        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Upper_shadow >= upper_shadow_greater_body * self.df.Body) & (self.df.Lower_shadow <= lower_shadow_greater_body * self.df.Body)), name] = 'True'
 
     def ma_linear_regression(self,lr_period=5,ma_period=20,ma_source='Close'):
         ma_name = 'MA_{source}_{period1}'.format(period1=ma_period,source=ma_source)
@@ -198,31 +198,24 @@ class Tools_cl(object):
                 if((self.df.Low[i] > self.df.High[i-1]) & (self.df.Doji_type[i-1] != 'Flat')):
                     self.df.set_value(self.df.index[i], 'Gapping_up_doji', 'True')
 
-
-
-
-
-
-    def hammer(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
+    def hammer(self,l_u=2.0,u_u=1.0,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
         if pin_name not in self.df:
-            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_greater_body=u_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
-        pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
+        indexes = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
         self.df['Hammer'] = None
-        for pin in pin_index:
-            i=self.df.index.get_loc(pin)
+        for index in indexes:
+            i=self.df.index.get_loc(index)
             if(i > lr_p+lr_ma_p-2):
-                if(self.df.Long_Short_B[i] == 'Short'):
-                    if(self.df.Upper_shadow[i] <= self.df.Body[i]):
-                        if (self.df.Body[i] <= 0.5 * self.df.Lower_shadow):
-                            self.df.set_value(self.df.index[i], 'Hammer', 'True')
+                if(self.df[lr_name] < 0.0):
+                        self.df.set_value(self.df.index[i], 'Hammer', 'True')
 
     def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False): #body above trendline???
         pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
         if pin_name not in self.df:
-            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_size=u_u)
+            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_greater_body=u_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
@@ -230,10 +223,8 @@ class Tools_cl(object):
         for pin in pin_index:
             i=self.df.index.get_loc(pin)
             if(i > lr_p+lr_ma_p-2):
-                if(self.df.Long_Short_B[i] == 'Short'):
-                    if(self.df.Upper_shadow[i] <= self.df.Body[i]):
-                        if (self.df.Body[i] <= 0.5 * self.df.Lower_shadow):
-                            self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
+                if (self.df[lr_name] > 0.0):
+                    self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
 
     def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u,lss=l_u)
