@@ -135,6 +135,7 @@ class Tools_cl(object):
             elif((self.df.Lower_shadow[i] > 0.35 * self.df.Candle[i]) & (self.df.Upper_shadow > 0.35 * self.df.Candle)):
                 self.df.set_value(self.df.index[i], 'Doji_type', 'Long_legged')
 
+# one candle pattern
     def black_spinning_top(self):
         indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
         self.df['Black_spinning_top'] = None
@@ -218,10 +219,10 @@ class Tools_cl(object):
             self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_greater_body=u_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
-        pin_index = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
+        indexes = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
         self.df['Hanging_Man'] = None
-        for pin in pin_index:
-            i=self.df.index.get_loc(pin)
+        for index in indexes:
+            i=self.df.index.get_loc(index)
             if(i > lr_p+lr_ma_p-2):
                 if (self.df[lr_name] > 0.0):
                     self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
@@ -229,37 +230,32 @@ class Tools_cl(object):
     def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u,lss=l_u)
         if inverted_pin_name not in self.df:
-            self.inverted_pin_bar(upper_shadow_greater_body=u_u,lower_shadow_size=l_u)
+            self.inverted_pin_bar(upper_shadow_greater_body=u_u,lower_shadow_greater_body=l_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
-        inverted_pin_index = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
+        indexes = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
         self.df['Shooting_star'] = None
-        for pin in inverted_pin_index:
-            i=self.df.index.get_loc(pin)
+        for index in indexes:
+            i=self.df.index.get_loc(index)
             if(i > lr_p+lr_ma_p-2):
                 if(self.df[lr_name][i] > 0.0):
-                   if(self.df.Long_Short_B[i] == 'Short'):
-                       if(self.df.Lower_shadow[i] <= self.df.Body[i]):
-                           if(self.df.Body[i] <= 0.5*self.df.Upper_shadow):
-                              self.df.set_value(self.df.index[i], 'Shooting_star', 'True')
+                    self.df.set_value(self.df.index[i], 'Shooting_star', 'True')
 
     def inverted_hammer (self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
         inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u, lss=l_u)
         if inverted_pin_name not in self.df:
-            self.inverted_pin_bar(upper_shadow_greater_body=u_u, lower_shadow_size=l_u)
+            self.inverted_pin_bar(upper_shadow_greater_body=u_u, lower_shadow_greater_body=l_u)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
-        inverted_pin_index = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
+        indexes = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
         self.df['Inverted_hammer'] = None
-        for pin in inverted_pin_index:
-            i=self.df.index.get_loc(pin)
+        for index in indexes:
+            i=self.df.index.get_loc(index)
             if(i > lr_p+lr_ma_p-2):
                 if(self.df[lr_name][i] < 0.0):
-                    if (self.df.Long_Short_B[i] == 'Short'):
-                        if (self.df.Lower_shadow[i] <= self.df.Body[i]):
-                            if (self.df.Body[i] <= 0.5 * self.df.Upper_shadow):
-                                self.df.set_value(self.df.index[i], 'Inverted_hammer', 'True')
+                    self.df.set_value(self.df.index[i], 'Inverted_hammer', 'True')
 
+#two candle pattern
     def bullish_engulfing(self,lr_p=5,lr_ma_p=20,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
