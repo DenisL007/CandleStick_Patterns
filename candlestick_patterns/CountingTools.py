@@ -26,6 +26,8 @@ class Tools_cl(object):
         #self.hammer()
         #self.hanging_man()
         #self.candle_spec()
+        #self.doji_type()
+        self.gap_finder()
         #self.umbrella_candle()
         #self.umbrella_candle_old()
         #self.dark_cloud_cover()
@@ -41,8 +43,8 @@ class Tools_cl(object):
         #self.abandoned_baby_on_downtrend()
         #self.tweezers_bottom()
         #self.tweezers_top()
-        self.bearish_belt_hold()
-        self.bullish_belt_hold()
+        #self.bearish_belt_hold()
+        #self.bullish_belt_hold()
         #self.candle_size_analysis()
         #self.define_long_candlestick()
         #self.define_short_candlestick()
@@ -50,13 +52,14 @@ class Tools_cl(object):
         #self.ma_linear_regression()
         # self.hammer()
         # self.hanging_man()
+        #self.bullish_belt_hold()
         print(self.df)
         self.df.to_csv('df.csv')
 
 
 
 
-    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec='False',lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji='False'):
+    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False):
         if(ma_p != 0):
             ma_name='MA_{source}_{period1}'.format(period1=ma_p,source=ma_s)
             if ma_name not in self.df:
@@ -65,10 +68,8 @@ class Tools_cl(object):
             lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
             if lr_name not in self.df:
                 self.ma_linear_regression(lr_period=lr_p,ma_period=lr_ma_p,ma_source=lr_ma_s)
-        if (candle_spec):
-            if (('Body' not in self.df) | ('Candle' not in self.df) | ('Candle_direction' not in self.df) | (
-                'Lower_shadow' not in self.df) | ('Upper_shadow' not in self.df) | ('Long_Short' not in self.df) | (
-                'Marubozu' not in self.df)):
+        if(candle_spec):
+            if (('Body' not in self.df) | ('Candle' not in self.df) | ('Candle_direction' not in self.df) | ('Lower_shadow' not in self.df) | ('Upper_shadow' not in self.df) | ('Long_Short' not in self.df) | ('Marubozu' not in self.df)):
                 self.candle_spec()
         if(doji):
             if('Doji_type' not in self.df):
@@ -101,12 +102,10 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def candle_spec(self,doji_size=0.1,l_s_b=1.3,s_s_b=0.5,b_avr_p=7,l_s_c=1.3,s_s_c=0.5,c_avr_p=7):
+    def candle_spec(self,l_s_b=1.3,s_s_b=0.5,b_avr_p=7,l_s_c=1.3,s_s_c=0.5,c_avr_p=7):
         self.df['Body'] = abs((self.df.Close - self.df.Open).round(decimals=2))
         self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
-        self.df['Candle_direction'] = where(self.df.Open < self.df.Close, 'Bull', 'Bear')
-        self.df['Candle_direction'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) <= doji_size*(self.df.High-self.df.Low).round(decimals=2), 'Doji', self.df['Candle_direction'])
-
+        self.df['Candle_direction'] = where(self.df.Open <= self.df.Close, 'Bull', 'Bear')
         self.df['Upper_shadow'] = where(self.df.Open >= self.df.Close,(self.df.High - self.df.Open).round(decimals=2),(self.df.High - self.df.Close).round(decimals=2))
         self.df['Lower_shadow'] = where(self.df.Open >= self.df.Close,(self.df.Close - self.df.Low).round(decimals=2),(self.df.Open - self.df.Low).round(decimals=2))
         self.df['Shadow_lenght'] = (self.df.Upper_shadow + self.df.Lower_shadow).round(decimals=2)
@@ -120,22 +119,45 @@ class Tools_cl(object):
         #self.df=self.df.drop('Candle_avr',1)
         #self.df=self.df.drop('Body_avr',1)
 
-    def doji_type(self,dr= 0.1):
-        self.check_column_exist(candle_spec='True')
-        indexes = self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
-        self.df['Doji_type'] = None
+    def doji_type(self,doji_size= 0.1, shadow_lenght= 0.1):
+        self.check_column_exist(candle_spec=True)
+        self.df['Doji_type'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) <= doji_size * (self.df.High - self.df.Low).round(decimals=2), 'Doji', '')
+        indexes = self.df.loc[(self.df.Doji_type == 'Doji')].index.tolist()
         for index in indexes:
             i =self.df.index.get_loc(index)
             if(self.df.High[i] == self.df.Low[i]):
                 self.df.set_value(self.df.index[i], 'Doji_type', 'Flat')
-            elif((self.df.Upper_shadow[i] < dr * self.df.Candle[i]) & (self.df.Lower_shadow >= 0.5 * self.df.Candle)):
+            elif ((self.df.Upper_shadow[i] < shadow_lenght * self.df.Candle[i]) & (self.df.Lower_shadow[i] >= 0.5 * self.df.Candle[i])):
                 self.df.set_value(self.df.index[i], 'Doji_type', 'Dragonfly')
-            elif((self.df.Lower_shadow[i] < dr * self.df.Candle[i]) & (self.df.Upper_shadow >= 0.5 * self.df.Candle)):
+            elif ((self.df.Lower_shadow[i] < shadow_lenght * self.df.Candle[i]) & (self.df.Upper_shadow[i] >= 0.5 * self.df.Candle[i])):
                 self.df.set_value(self.df.index[i], 'Doji_type', 'Gravestone')
-            elif((self.df.Lower_shadow[i] > 0.35 * self.df.Candle[i]) & (self.df.Upper_shadow > 0.35 * self.df.Candle)):
+            elif ((self.df.Lower_shadow[i] > 0.35 * self.df.Candle[i]) & (self.df.Upper_shadow[i] > 0.35 * self.df.Candle[i])):
                 self.df.set_value(self.df.index[i], 'Doji_type', 'Long_legged')
 
-#continuational
+    def gap_finder(self):
+        self.check_column_exist(candle_spec=True)
+        self.df['Gap_body'] = None
+        self.df['Gap_candle'] = None
+        for i in range(len(self.df)-1):
+            if(self.df.Candle_direction[i] == 'Bull'):
+                if(((self.df.Close[i] < self.df.Open[i+1]) & (self.df.Close[i] < self.df.Close[i+1])) | ((self.df.Open[i] > self.df.Open[i+1]) & (self.df.Open[i] > self.df.Close[i+1]))):
+                    self.df.set_value(self.df.index[i], 'Gap_body', 'GAP')
+                    self.df.set_value(self.df.index[i+1], 'Gap_body', 'GAP')
+                if((self.df.High[i] < self.df.Low[i+1]) | (self.df.Low[i] > self.df.High[i+1])):
+                    self.df.set_value(self.df.index[i], 'Gap_candle', 'GAP')
+                    self.df.set_value(self.df.index[i + 1], 'Gap_candle', 'GAP')
+            elif(self.df.Candle_direction[i] == 'Bear'):
+                if(((self.df.Close[i] > self.df.Open[i+1]) & (self.df.Close[i] > self.df.Open[i+1])) | ((self.df.Open[i] < self.df.Open[i+1]) & (self.df.Open[i] < self.df.Close[i+1]))):
+                    self.df.set_value(self.df.index[i], 'Gap_body', 'GAP')
+                    self.df.set_value(self.df.index[i + 1], 'Gap_body', 'GAP')
+                if((self.df.High[i] < self.df.Low[i+1]) | (self.df.Low[i] > self.df.High[i+1])):
+                    self.df.set_value(self.df.index[i], 'Gap_candle', 'GAP')
+                    self.df.set_value(self.df.index[i + 1], 'Gap_candle', 'GAP')
+
+
+
+
+            #continuational
 
 
 
@@ -176,7 +198,7 @@ class Tools_cl(object):
                     self.df.set_value(self.df.index[i], 'Bearish_belt_hold', 'True')
 
     def bullish_belt_hold(self, ls=0.03, us=0.3 ):
-        self.check_column_exist(candle_spec='True')
+        self.check_column_exist(candle_spec=True)
         self.df['Bullish_belt_hold'] = None
         indexes = self.df.loc[(self.df.Candle_direction == 'Bull') & (self.df.Long_Short_B == 'Long') & (self.df.Long_Short_C == 'Long')].index.tolist()
         for index in indexes:
@@ -757,8 +779,9 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Upside_gap_two_crows', 'UGTC2')
                                 self.df.set_value(self.df.index[i], 'Upside_gap_two_crows', 'UGTC3')
 
-    def gap_finder(self, type = 'Body'):
-        pass
+
+
+
 
     def three_soldiers(self):
         pass
