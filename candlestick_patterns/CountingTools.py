@@ -23,13 +23,11 @@ class Tools_cl(object):
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
         #self.moving_average(period=20)
         #self.ma_linear_regression()
-        #self.hammer()
-        #self.hanging_man()
-        #self.candle_spec()
+        self.pin_bar()
+        self.candle_spec()
         #self.doji_type()
-        self.gap_finder()
-        #self.umbrella_candle()
-        #self.umbrella_candle_old()
+        #self.gap_finder()
+        #self.candle_size_analysis()
         #self.dark_cloud_cover()
         #self.piercing_pattern()
         #self.bullish_engulfing()
@@ -59,7 +57,7 @@ class Tools_cl(object):
 
 
 
-    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False):
+    def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False,volume_p=0):
         if(ma_p != 0):
             ma_name='MA_{source}_{period1}'.format(period1=ma_p,source=ma_s)
             if ma_name not in self.df:
@@ -74,15 +72,20 @@ class Tools_cl(object):
         if(doji):
             if('Doji_type' not in self.df):
                 self.doji_type()
+        if(volume_p != 0):
+            v_name='Vma{p}'.format(p=volume_p)
+            if v_name not in self.df:
+                self.moving_avarage(period=volume_p,source='Volume')
 
     def moving_average(self,period=1,source='Close'):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
 
-    def pin_bar(self,lower_shadow_greater_body=2.0,upper_shadow_greater_body=1.0):
-        self.check_column_exist(candle_spec='True')
-        name = 'Pin_{lsgb}_{uss}'.format(lsgb=lower_shadow_greater_body,uss=upper_shadow_size)
-        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Lower_shadow >= lower_shadow_greater_body * self.df.Body) & (self.df.Upper_shadow <= upper_shadow_greater_body * self.df.Body)), name] = 'True'
+    def pin_bar(self,lower_shadow_size=0.5,body_size=0.26,volume=0,small_body=False):
+        self.check_column_exist(candle_spec='True', volume_p=volume)
+        pin_name = 'Pin_{lss}'.format(lss=lower_shadow_size)
+        self.df.loc[(self.df.Lower_shadow >= lower_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'True'
+        -- выходить за рамки предыдущей свечи!!!
 
     def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_greater_body=1.0):
         self.check_column_exist(candle_spec='True')
@@ -102,7 +105,7 @@ class Tools_cl(object):
             slopes[index+lr_period-1]=slope
         self.df[lr_name]=slopes
 
-    def candle_spec(self,l_s_b=1.3,s_s_b=0.5,b_avr_p=7,l_s_c=1.3,s_s_c=0.5,c_avr_p=7):
+    def candle_spec(self,l_s_b=1.3,s_s_b=0.5,b_avr_p=7,l_s_c=1.3,s_s_c=0.5,c_avr_p=7,debug=True):
         self.df['Body'] = abs((self.df.Close - self.df.Open).round(decimals=2))
         self.df['Candle'] = abs((self.df.High - self.df.Low).round(decimals=2))
         self.df['Candle_direction'] = where(self.df.Open <= self.df.Close, 'Bull', 'Bear')
@@ -116,8 +119,11 @@ class Tools_cl(object):
         self.df['Long_Short_C'] = where(self.df.Candle >= l_s_c * self.df.Candle_avr, 'Long', '')
         self.df['Long_Short_C'] = where(self.df.Candle <= s_s_c * self.df.Candle_avr, 'Short', self.df['Long_Short_C'])
         self.df['Marubozu'] = where((self.df.Lower_shadow == 0.0) & (self.df.Upper_shadow == 0.0),'Marubozu','')
-        #self.df=self.df.drop('Candle_avr',1)
-        #self.df=self.df.drop('Body_avr',1)
+        if(debug):
+            self.df['Low_S_to_Cand'] = (self.df.Lower_shadow / self.df.Candle).round(decimals=2)
+            self.df['Upp_s_to_Cand'] = (self.df.Upper_shadow / self.df.Candle).round(decimals=2)
+            self.df['Bod_to_Cand']   = (self.df.Body / self.df.Candle).round(decimals=2)
+
 
     def doji_type(self,doji_size= 0.1, shadow_lenght= 0.1):
         self.check_column_exist(candle_spec=True)
@@ -157,7 +163,7 @@ class Tools_cl(object):
 
 
 
-            #continuational
+#continuational
 
 
 
@@ -1060,16 +1066,8 @@ class Tools_cl(object):
         pass
 
     def candle_size_analysis(self):
-        self.df['Size'] = abs((self.df.Open - self.df.Close).round(decimals=2))  #count candle size (need to round - pandas have a bug)
-        minSize = min(self.df.Size)
-        maxSize = max(self.df.Size)
-        totalSize = len(self.df.Size)
-        hist_data = self.df.Size.value_counts()  # prepare histogram data
-        hist_data = hist_data.sort_index()
-        df = hist_data.to_frame().reset_index()  # pass Series to DF
-        df.columns=['Size','Count']
-        df['% of total']= ((df.Count/totalSize)*float(100)).round(decimals=3)  # calculate % for each size from total
-        return df
+        hist_data = self.df.Body.value_counts().sort_index()  # prepare histogram data
+        print(hist_data)
 
     def define_long_candlestick(self,long_cs_period = 5):
         self.df['Long_CS'] = ''
