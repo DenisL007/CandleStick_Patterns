@@ -85,7 +85,7 @@ class Tools_cl(object):
         self.check_column_exist(candle_spec='True', volume_p=volume)
         pin_name = 'Pin_{lss}'.format(lss=lower_shadow_size)
         self.df.loc[(self.df.Lower_shadow >= lower_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'True'
-        -- выходить за рамки предыдущей свечи!!!
+        -- выходить за рамки предыдущей свечи!!!!!
 
     def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_greater_body=1.0):
         self.check_column_exist(candle_spec='True')
