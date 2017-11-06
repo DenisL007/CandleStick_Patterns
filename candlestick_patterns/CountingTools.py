@@ -3,7 +3,9 @@ from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
 from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,hstack,asarray,isfinite,interp,nan
 import matplotlib.pyplot as plt
-import timeit
+import datetime as dt
+
+
 
 class Tools_cl(object):
 
@@ -21,38 +23,11 @@ class Tools_cl(object):
  # calculate ZZ
         #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
-        #self.moving_average(period=20)
-        #self.ma_linear_regression()
-        self.pin_bar()
-        self.candle_spec()
-        #self.doji_type()
-        #self.gap_finder()
-        #self.candle_size_analysis()
-        #self.dark_cloud_cover()
-        #self.piercing_pattern()
-        #self.bullish_engulfing()
-        #self.bearish_engulfing()
-        #self.on_neck()
-        #self.in_neck()
-        #self.thrusting_pattern()
-        #self.doji_morning_star()
-        #self.doji_evening_star()
-        #self.abandoned_baby_on_uptrend()
-        #self.abandoned_baby_on_downtrend()
-        #self.tweezers_bottom()
-        #self.tweezers_top()
-        #self.bearish_belt_hold()
-        #self.bullish_belt_hold()
-        #self.candle_size_analysis()
-        #self.define_long_candlestick()
-        #self.define_short_candlestick()
-        #print(self.issuer_list)
-        #self.ma_linear_regression()
-        # self.hammer()
-        # self.hanging_man()
-        #self.bullish_belt_hold()
-        print(self.df)
-        self.df.to_csv('df.csv')
+
+        a= self.local_min(start='20170101',end='20171010')
+
+        #print(self.df)
+        #self.df.to_csv('df.csv')
 
 
 
@@ -81,18 +56,29 @@ class Tools_cl(object):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
 
-    def pin_bar(self,lower_shadow_size=0.5,body_size=0.26,volume=0,small_body=False):
-        self.check_column_exist(candle_spec='True', volume_p=volume)
-        pin_name = 'Pin_{lss}'.format(lss=lower_shadow_size)
-        self.df.loc[(self.df.Lower_shadow >= lower_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'True'
-        -- выходить за рамки предыдущей свечи!!!!!
-
-    def inverted_pin_bar(self,upper_shadow_greater_body=2.0,lower_shadow_greater_body=1.0):
+    def pin_bar(self,lower_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True):
         self.check_column_exist(candle_spec='True')
-        name = 'Inverted_pin_{lsgb}_{uss}'.format(usgb=upper_shadow_greater_body, lss=lower_shadow_size)
-        self.df.loc[((self.df.Candle_direction != 'Doji') & (self.df.Upper_shadow >= upper_shadow_greater_body * self.df.Body) & (self.df.Lower_shadow <= lower_shadow_greater_body * self.df.Body)), name] = 'True'
+        pin_name = 'Pin_{lss}'.format(lss=lower_shadow_size)
+        self.df.loc[(self.df.Lower_shadow >= lower_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'Pin'
+        if(engulf):
+            indexes = self.df.loc[(self.df[pin_name] == 'Pin')].index.tolist()
+            for index in indexes:
+                i = self.df.index.get_loc(index)
+                if(self.df.Low[i-1] > self.df.Low[i]):
+                    self.df.set_value(self.df.index[i], pin_name, 'PinE')
 
-    def ma_linear_regression(self,lr_period=5,ma_period=20,ma_source='Close'):
+    def inverted_pin_bar(self,upper_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True):
+        self.check_column_exist(candle_spec='True')
+        pin_name = 'Inverted_pin_{lss}'.format(lss=upper_shadow_size)
+        self.df.loc[(self.df.Upper_shadow >= upper_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'IPin'
+        if (engulf):
+            indexes = self.df.loc[(self.df[pin_name] == 'IPin')].index.tolist()
+            for index in indexes:
+                i = self.df.index.get_loc(index)
+                if (self.df.High[i - 1] > self.df.High[i]):
+                    self.df.set_value(self.df.index[i], pin_name, 'IPinE')
+
+    def ma_linear_regression(self,lr_period=5,ma_period=5,ma_source='Close'):
         ma_name = 'MA_{source}_{period1}'.format(period1=ma_period,source=ma_source)
         self.check_column_exist(ma_p=ma_period,ma_s=ma_source)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_period,p2=ma_source,p3=ma_period)
@@ -124,7 +110,6 @@ class Tools_cl(object):
             self.df['Upp_s_to_Cand'] = (self.df.Upper_shadow / self.df.Candle).round(decimals=2)
             self.df['Bod_to_Cand']   = (self.df.Body / self.df.Candle).round(decimals=2)
 
-
     def doji_type(self,doji_size= 0.1, shadow_lenght= 0.1):
         self.check_column_exist(candle_spec=True)
         self.df['Doji_type'] = where(abs((self.df.Open - self.df.Close).round(decimals=2)) <= doji_size * (self.df.High - self.df.Low).round(decimals=2), 'Doji', '')
@@ -145,20 +130,20 @@ class Tools_cl(object):
         self.df['Gap_body'] = None
         self.df['Gap_candle'] = None
         for i in range(len(self.df)-1):
-            if(self.df.Candle_direction[i] == 'Bull'):
-                if(((self.df.Close[i] < self.df.Open[i+1]) & (self.df.Close[i] < self.df.Close[i+1])) | ((self.df.Open[i] > self.df.Open[i+1]) & (self.df.Open[i] > self.df.Close[i+1]))):
-                    self.df.set_value(self.df.index[i], 'Gap_body', 'GAP')
+            if ((self.df.High[i] < self.df.Low[i + 1]) | (self.df.Low[i] > self.df.High[i + 1])):
+                self.df.set_value(self.df.index[i + 1], 'Gap_candle', 'GAP')
+            if((self.df.Candle_direction[i] == 'Bull') & (self.df.Candle_direction[i+1] == 'Bull')):
+                if((self.df.Close[i] < self.df.Open[i+1]) | (self.df.Open[i] > self.df.Close[i+1])):
                     self.df.set_value(self.df.index[i+1], 'Gap_body', 'GAP')
-                if((self.df.High[i] < self.df.Low[i+1]) | (self.df.Low[i] > self.df.High[i+1])):
-                    self.df.set_value(self.df.index[i], 'Gap_candle', 'GAP')
-                    self.df.set_value(self.df.index[i + 1], 'Gap_candle', 'GAP')
-            elif(self.df.Candle_direction[i] == 'Bear'):
-                if(((self.df.Close[i] > self.df.Open[i+1]) & (self.df.Close[i] > self.df.Open[i+1])) | ((self.df.Open[i] < self.df.Open[i+1]) & (self.df.Open[i] < self.df.Close[i+1]))):
-                    self.df.set_value(self.df.index[i], 'Gap_body', 'GAP')
-                    self.df.set_value(self.df.index[i + 1], 'Gap_body', 'GAP')
-                if((self.df.High[i] < self.df.Low[i+1]) | (self.df.Low[i] > self.df.High[i+1])):
-                    self.df.set_value(self.df.index[i], 'Gap_candle', 'GAP')
-                    self.df.set_value(self.df.index[i + 1], 'Gap_candle', 'GAP')
+            elif((self.df.Candle_direction[i] == 'Bull') & (self.df.Candle_direction[i+1] == 'Bear')):
+                if((self.df.Close[i] < self.df.Close[i+1]) | (self.df.Open[i] > self.df.Open[i+1])):
+                    self.df.set_value(self.df.index[i+1], 'Gap_body', 'GAP')
+            elif((self.df.Candle_direction[i] == 'Bear') & (self.df.Candle_direction[i+1] == 'Bull')):
+                if((self.df.Open[i] < self.df.Open[i+1]) | (self.df.Close[i] > self.df.Close[i+1])):
+                    self.df.set_value(self.df.index[i+1], 'Gap_body', 'GAP')
+            elif((self.df.Candle_direction[i] == 'Bear') & (self.df.Candle_direction[i+1] == 'Bear')):
+                if((self.df.Open[i] < self.df.Close[i+1]) | (self.df.Close[i] > self.df.Open[i+1])):
+                    self.df.set_value(self.df.index[i+1], 'Gap_body', 'GAP')
 
 
 
@@ -169,23 +154,24 @@ class Tools_cl(object):
 
 #reversal
 
-
     def black_spinning_top(self):
+        self.check_column_exist(candle_spec='True')
         indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
         self.df['Black_spinning_top'] = None
         for index in indexes:
             i =self.df.index.get_loc(index)
-            if((self.df.Lower_shadow > 0.0) | (self.df.Upper_shadow > 0.0)):
-                if((self.df.Body < self.df.Upper_shadow) | (self.df.Body < self.df.Lower_shadow)):
+            if((self.df.Lower_shadow[i] > 0.0) | (self.df.Upper_shadow[i] > 0.0)):
+                if((self.df.Body[i] < self.df.Upper_shadow[i]) | (self.df.Body[i] < self.df.Lower_shadow[i])):
                     self.df.set_value(self.df.index[i], 'Black_spinning_top', 'True')
 
     def white_spinning_top(self):
+        self.check_column_exist(candle_spec='True')
         indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
         self.df['White_spinning_top'] = None
         for index in indexes:
             i =self.df.index.get_loc(index)
-            if((self.df.Lower_shadow > 0.0) | (self.df.Upper_shadow > 0.0)):
-                if((self.df.Body < self.df.Upper_shadow) | (self.df.Body < self.df.Lower_shadow)):
+            if((self.df.Lower_shadow[i] > 0.0) | (self.df.Upper_shadow[i] > 0.0)):
+                if((self.df.Body[i] < self.df.Upper_shadow[i]) | (self.df.Body[i] < self.df.Lower_shadow[i])):
                     self.df.set_value(self.df.index[i], 'White_spinning_top', 'True')
 
     def bearish_belt_hold(self, ls=0.3, us=0.03 ):
@@ -194,13 +180,8 @@ class Tools_cl(object):
         indexes = self.df.loc[(self.df.Candle_direction == 'Bear') & (self.df.Long_Short_B == 'Long') & (self.df.Long_Short_C == 'Long')].index.tolist()
         for index in indexes:
             i = self.df.index.get_loc(index)
-            print(bear)
             if(self.df.Upper_shadow[i] <= us * self.df.Candle[i]):
-                print(self.df.Upper_shadow[i])
-                print(self.df.Candle[i])
-                print(us * self.df.Candle[i])
                 if(self.df.Lower_shadow[i] <= ls * self.df.Candle[i]):
-                    print(self.df.Lower_shadow[i])
                     self.df.set_value(self.df.index[i], 'Bearish_belt_hold', 'True')
 
     def bullish_belt_hold(self, ls=0.03, us=0.3 ):
@@ -216,7 +197,8 @@ class Tools_cl(object):
     def gapping_down_doji(self):
         self.check_column_exist(doji='True')
         self.df['Gapping_down_doji'] = None
-        indexes= self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        indexes= self.df.loc[(self.df.Doji_type != '')].index.tolist()
+        print(indexes)
         for index in indexes:
             i = self.df.index.get_loc(index)
             if(i > 0):
@@ -226,17 +208,17 @@ class Tools_cl(object):
     def gapping_up_doji(self):
         self.check_column_exist(doji='True')
         self.df['Gapping_up_doji'] = None
-        indexes= self.df.loc[(self.df.Candle_direction == 'Doji')].index.tolist()
+        indexes= self.df.loc[(self.df.Doji_type != '')].index.tolist()
         for index in indexes:
             i = self.df.index.get_loc(index)
             if(i > 0):
                 if((self.df.Low[i] > self.df.High[i-1]) & (self.df.Doji_type[i-1] != 'Flat')):
                     self.df.set_value(self.df.index[i], 'Gapping_up_doji', 'True')
 
-    def hammer(self,l_u=2.0,u_u=1.0,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
-        pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+    def hammer(self,lower_shadow_size=0.550,body_size=0.26,small_body=False,engulf=True,lr_p=5,lr_ma_p=5,lr_ma_s='Close',gap = False):
+        pin_name = 'Pin_{lower_shadow_size}'.format(lower_shadow_size=lower_shadow_size)
         if pin_name not in self.df:
-            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_greater_body=u_u)
+            self.pin_bar(lower_shadow_size=lower_shadow_size,body_size=body_size,small_body=small_body,engulf=engulf)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         indexes = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
@@ -247,10 +229,10 @@ class Tools_cl(object):
                 if(self.df[lr_name] < 0.0):
                         self.df.set_value(self.df.index[i], 'Hammer', 'True')
 
-    def hanging_man(self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False): #body above trendline???
-        pin_name = 'Pin_{lsgb}_{uss}'.format(lsgb=l_u,uss=u_u)
+    def hanging_man(self,lower_shadow_size=0.550,body_size=0.26,small_body=False,engulf=True,lr_p=5,lr_ma_p=5,lr_ma_s='Close',gap = False): #body above trendline???
+        pin_name = 'Pin_{lower_shadow_size}'.format(lower_shadow_size=lower_shadow_size)
         if pin_name not in self.df:
-            self.pin_bar(lower_shadow_greater_body=l_u,upper_shadow_greater_body=u_u)
+            self.pin_bar(lower_shadow_size=lower_shadow_size,body_size=body_size,small_body=small_body,engulf=engulf)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         indexes = self.df.loc[(self.df[pin_name] == 'True')].index.tolist()
@@ -261,10 +243,10 @@ class Tools_cl(object):
                 if (self.df[lr_name] > 0.0):
                     self.df.set_value(self.df.index[i], 'Hanging_Man', 'True')
 
-    def shooting_star(self,u_u=2.0,l_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
-        inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u,lss=l_u)
+    def shooting_star(self,upper_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True,lr_p=5,lr_ma_p=5,lr_ma_s='Close',gap = False):
+        inverted_pin_name = 'Inverted_pin_{upper_shadow_size}'.format(upper_shadow_size=upper_shadow_size)
         if inverted_pin_name not in self.df:
-            self.inverted_pin_bar(upper_shadow_greater_body=u_u,lower_shadow_greater_body=l_u)
+            self.inverted_pin_bar(upper_shadow_size=upper_shadow_size,body_size=body_size,small_body=small_body,engulf=engulf)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         indexes = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
@@ -275,10 +257,10 @@ class Tools_cl(object):
                 if(self.df[lr_name][i] > 0.0):
                     self.df.set_value(self.df.index[i], 'Shooting_star', 'True')
 
-    def inverted_hammer (self,l_u=2.0,u_u=0.2,lr_p=5,lr_ma_p=20,lr_ma_s='Close',gap = False):
-        inverted_pin_name = 'Inverted_pin_{usgb}_{lss}'.format(usgb=u_u, lss=l_u)
+    def inverted_hammer (self,upper_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True,lr_p=5,lr_ma_p=5,lr_ma_s='Close',gap = False):
+        inverted_pin_name = 'Inverted_pin_{upper_shadow_size}'.format(upper_shadow_size=upper_shadow_size)
         if inverted_pin_name not in self.df:
-            self.inverted_pin_bar(upper_shadow_greater_body=u_u, lower_shadow_greater_body=l_u)
+            self.inverted_pin_bar(upper_shadow_size=upper_shadow_size,body_size=body_size,small_body=small_body,engulf=engulf)
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
         indexes = self.df.loc[(self.df[inverted_pin_name] == 'True')].index.tolist()
@@ -289,7 +271,7 @@ class Tools_cl(object):
                 if(self.df[lr_name][i] < 0.0):
                     self.df.set_value(self.df.index[i], 'Inverted_hammer', 'True')
 
-    def bullish_engulfing(self,lr_p=5,lr_ma_p=20,lr_ma_s='Close'):
+    def bullish_engulfing(self,lr_p=5,lr_ma_p=5,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         self.df['Bullish_engulfing'] = None
@@ -304,7 +286,7 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i-1],'Bullish_engulfing', 'BE1')
                                 self.df.set_value(self.df.index[i],'Bullish_engulfing', 'BE2')
 
-    def bearish_engulfing(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+    def bearish_engulfing(self, lr_p=5, lr_ma_p=5,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         self.df['Bearish_engulfing'] = None
@@ -319,7 +301,7 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Bearish_engulfing', 'BE1')
                                 self.df.set_value(self.df.index[i], 'Bearish_engulfing', 'BE2')
 
-    def dark_cloud_cover(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+    def dark_cloud_cover(self, lr_p=5, lr_ma_p=5,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bear_indexes = self.df.loc[(self.df.Candle_direction == 'Bear')].index.tolist()
@@ -334,7 +316,7 @@ class Tools_cl(object):
                                  self.df.set_value(self.df.index[i-1], 'Dark_cloud_cover', 'DC1')
                                  self.df.set_value(self.df.index[i], 'Dark_cloud_cover', 'DC2')
 
-    def piercing_pattern (self, lr_p=5, lr_ma_p=20,lr_ma_s='Close'):
+    def piercing_pattern (self, lr_p=5, lr_ma_p=5,lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
@@ -349,7 +331,7 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Piercing_pattern', 'PP1')
                                 self.df.set_value(self.df.index[i], 'Piercing_pattern', 'PP2')
 
-    def on_neck(self, lr_p=5, lr_ma_p=20,lr_ma_s='Close',close_delta=0.2):
+    def on_neck(self, lr_p=5, lr_ma_p=5,lr_ma_s='Close',close_delta=0.2):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p,p2=lr_ma_s,p3=lr_ma_p)
         self.check_column_exist(candle_spec='True',lr_p=lr_p,lr_ma_p=lr_ma_p,lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
@@ -367,7 +349,7 @@ class Tools_cl(object):
                                     self.df.set_value(self.df.index[i - 1], 'On_Neck', 'ON1')
                                     self.df.set_value(self.df.index[i], 'On_Neck', 'ON2')
 
-    def in_neck(self, lr_p=5, lr_ma_p=20, lr_ma_s='Close', close_delta=0.2):
+    def in_neck(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close', close_delta=0.2):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
@@ -385,7 +367,7 @@ class Tools_cl(object):
                                     self.df.set_value(self.df.index[i - 1], 'In_Neck', 'IN1')
                                     self.df.set_value(self.df.index[i], 'In_Neck', 'IN2')
 
-    def thrusting_pattern(self, lr_p=5, lr_ma_p=20, lr_ma_s='Close'):
+    def thrusting_pattern(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
         self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
         Bull_indexes = self.df.loc[(self.df.Candle_direction == 'Bull')].index.tolist()
@@ -606,23 +588,23 @@ class Tools_cl(object):
 
     def tweezers_bottom(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
-        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s,doji=True)
         self.df['Tweezers_bottom'] = None
         for i in range(lr_p + lr_ma_p - 2,len(self.df),1):
             if (self.df[lr_name][i] < 0.0):
-                if((self.df.Candle_direction[i] != 'Doji_flat') & (self.df.Candle_direction[i+1] != 'Doji_flat')):
+                if((self.df.Doji_type[i] != 'Flat') & (self.df.Doji_type[i+1] != 'Flat')):
                     if(self.df.Low[i] == self.df.Low[i+1]):
                         self.df.set_value(self.df.index[i], 'Tweezers_bottom', 'TB1')
                         self.df.set_value(self.df.index[i+1], 'Tweezers_bottom', 'TB2')
 
     def tweezers_top(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
         lr_name = 'LR_{p1}_{p2}_{p3}'.format(p1=lr_p, p2=lr_ma_s, p3=lr_ma_p)
-        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s)
+        self.check_column_exist(candle_spec='True', lr_p=lr_p, lr_ma_p=lr_ma_p, lr_ma_s=lr_ma_s,doji=True)
         self.df['Tweezers_top'] = None
         for i in range(lr_p + lr_ma_p - 2,len(self.df),1):
-            if (self.df[lr_name][i] > 0.0):
-                if((self.df.Candle_direction[i] != 'Doji_flat') & (self.df.Candle_direction[i+1] != 'Doji_flat')):
-                    if(self.df.High[i] == self.df.Hugh[i+1]):
+            if (self.df[lr_name][i] < 0.0):
+                if((self.df.Doji_type[i] != 'Flat') & (self.df.Doji_type[i+1] != 'Flat')):
+                    if(self.df.High[i] == self.df.High[i+1]):
                         self.df.set_value(self.df.index[i], 'Tweezers_top', 'TT1')
                         self.df.set_value(self.df.index[i+1], 'Tweezers_top', 'TT2')
 
@@ -732,7 +714,7 @@ class Tools_cl(object):
         indexes = self.df.loc[(self.df.Long_Short_B == 'Short')].index.tolist()
         for index in indexes:
             i = self.df.index.get_loc(index)
-            if((self.df.Upper_shadow[i] > lengh * self.df.Body) | (self.df.Lower_shadow[i] > lengh * self.df.Body)):
+            if((self.df.Upper_shadow[i] > lengh * self.df.Body[i]) | (self.df.Lower_shadow[i] > lengh * self.df.Body[i])):
                 self.df.set_value(self.df.index[i], 'High_wave', 'True')
 
     def downside_takusi_gap(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
@@ -785,10 +767,6 @@ class Tools_cl(object):
                                 self.df.set_value(self.df.index[i - 1], 'Upside_gap_two_crows', 'UGTC2')
                                 self.df.set_value(self.df.index[i], 'Upside_gap_two_crows', 'UGTC3')
 
-
-
-
-
     def three_soldiers(self):
         pass
 
@@ -804,7 +782,7 @@ class Tools_cl(object):
     def towers_bottom(self):
         pass
 
-    def deliberation(self, lr_p=5, lr_ma_p=5, lr_ma_s='Close'):
+    def deliberation(self):
         pass
 
     def gapping_play_up(self):
@@ -826,6 +804,43 @@ class Tools_cl(object):
         pass
 
     def mat_hold(self):
+        pass
+
+    def price_level_analysis(self):#how much cs at each price level
+        pass
+
+    def candle_size_analysis(self):
+        self.check_column_exist(candle_spec='True')
+        hist_data = self.df.Body.value_counts().sort_index()  # prepare histogram data
+        print(hist_data)
+
+    def local_min(self,start=None,end=None,source='Close',period=255):
+        if(start!=None):
+            df_p = self.df[start:end]
+            return df_p.loc[df_p[source] == df_p[source].min()]
+        else:
+            df_l  = len(self.df)
+            if(df_l <= period):
+                tmp_l = 0
+            else:
+                tmp_l = df_l - period
+            df_p = self.df[tmp_l:len(self.df)]
+            return df_p.loc[df_p[source] == df_p[source].min()]
+
+    def local_max(self,start=None,end=None,source='Close',period=255):
+        if(start!=None):
+            df_p = self.df[start:end]
+            return df_p.loc[df_p[source] == df_p[source].max()]
+        else:
+            df_l  = len(self.df)
+            if(df_l <= period):
+                tmp_l = 0
+            else:
+                tmp_l = df_l - period
+            df_p = self.df[tmp_l:len(self.df)]
+            return df_p.loc[df_p[source] == df_p[source].max()]
+
+    def support_resistance_level(self):
         pass
 
     def plot_candles(sefl,pricing, title=None, volume_bars=False,o=False,t=False, ot=False,color_function=None, technicals=None):
@@ -1062,53 +1077,8 @@ class Tools_cl(object):
         self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
         self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
 
-    def price_level_analysis(self):#how much cs at each price level
-        pass
 
-    def candle_size_analysis(self):
-        hist_data = self.df.Body.value_counts().sort_index()  # prepare histogram data
-        print(hist_data)
 
-    def define_long_candlestick(self,long_cs_period = 5):
-        self.df['Long_CS'] = ''
-        avrSize = Series.rolling(self.df.Size, window=long_cs_period, min_periods=long_cs_period).mean()  # count average SIZE for period
-        for index in range(len(avrSize)):       # if current cs_size greater that avr Size add "LCS" to dataframe
-            if(self.df.Size[index] > 1.3*avrSize[index]):
-                self.df.set_value(index,'Long_CS','LCS')
-
-    def define_short_candlestick(self,short_cs_period = 15):
-        self.df['Short_CS'] = ''
-        avrSize = Series.rolling(self.df.Size, window=short_cs_period, min_periods=short_cs_period).mean()  # count average SIZE for period
-        for index in range(len(avrSize)):
-            if(self.df.Size[index] < 0.51*avrSize[index]):# if current cs_size less that avr Size add "SCS" to dataframe
-                self.df.set_value(index,'Short_CS','SCS')
-
-    def average_slope(self):
-        pass
-
-    def local_min(self,price='Close',period=5):
-        pass
-
-    def local_max(self):
-        pass
-
-    def support_resistance_level_analysis(self):
-        pass
-
-    def min_price_analysis(self):
-        pass
-
-    def max_price_analysis(self):
-        pass
-
-    def p_ma_d_trend_analysis(self):
-        pass
-
-    def lr_trend_analysis(self):
-        pass
-
-    def ma_d_trend_analysis(self):
-        pass
 
 
 '''    def umbrella_candle_old (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
