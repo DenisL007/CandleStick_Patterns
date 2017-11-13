@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,hstack,asarray,isfinite,interp,nan
+from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,vstack,asarray,isfinite,interp,nan
 import matplotlib.pyplot as plt
-import datetime as dt
+from datetime import datetime, timedelta
 
 
 
@@ -24,8 +24,7 @@ class Tools_cl(object):
         #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
 
-        a= self.local_min(start='20170101',end='20171010')
-
+        self.price_level_analysis()
         #print(self.df)
         #self.df.to_csv('df.csv')
 
@@ -807,14 +806,36 @@ class Tools_cl(object):
         pass
 
     def price_level_analysis(self):#how much cs at each price level
-        pass
+        min = self.df.Low.min()
+        max = self.df.High.max()
+        step = 0.01
+        l = int(((max-min)+step)/step)
+        arr1 = arange(start=min,stop=max+step,step=step)
+        arr2 = zeros(l)
+        arr = vstack((arr1,arr2))
+        a=self.df.High[1]
+        print(arr1[1])
+        for i in range(l):
+            print(i)
+            if(arr1[i] == a):
+                print('fdf')
+
+
 
     def candle_size_analysis(self):
         self.check_column_exist(candle_spec='True')
         hist_data = self.df.Body.value_counts().sort_index()  # prepare histogram data
         print(hist_data)
 
-    def local_min(self,start=None,end=None,source='Close',period=255):
+    def local_min(self,source='Close',period=255):
+        name = 'MIN_{period}_{source}'.format(period=period,source=source)
+        self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).min()
+
+    def local_max(self,source='Close',period=255):
+        name = 'MAX_{period}_{source}'.format(period=period,source=source)
+        self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).max()
+
+    def local_min_row(self,start=None,end=None,source='Close',period=255):
         if(start!=None):
             df_p = self.df[start:end]
             return df_p.loc[df_p[source] == df_p[source].min()]
@@ -827,7 +848,7 @@ class Tools_cl(object):
             df_p = self.df[tmp_l:len(self.df)]
             return df_p.loc[df_p[source] == df_p[source].min()]
 
-    def local_max(self,start=None,end=None,source='Close',period=255):
+    def local_max_row(self,start=None,end=None,source='Close',period=255):
         if(start!=None):
             df_p = self.df[start:end]
             return df_p.loc[df_p[source] == df_p[source].max()]
