@@ -24,6 +24,6 @@ if __name__ == '__main__':
     print('\nWELCOME TO THE PROGRAM \n')
 
     list = "INTC"
-    data_frame = ImportDataFrameGoogle(list)
+    data_frame = ImportDataFrameYahoo(list)
     intc = Tools_cl(data_frame.il)
 

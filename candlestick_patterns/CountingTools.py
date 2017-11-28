@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from pandas import Series, read_csv, Series, DataFrame, value_counts,concat
 from scipy import stats
-from numpy import arange,linspace, where,diff,concatenate,savetxt,array,all,zeros,column_stack,vstack,asarray,isfinite,interp,nan
+from numpy import arange,linspace, where,argwhere,diff,concatenate,savetxt,array,all,zeros,column_stack,vstack,asarray,isfinite,interp,nan
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
@@ -23,11 +23,10 @@ class Tools_cl(object):
  # calculate ZZ
         #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
-
-        self.price_level_analysis()
+        suppres_levels = self.suppres_level_analysis()
         #print(self.df)
-        #self.df.to_csv('df.csv')
-
+        self.df.to_csv('df.csv')
+        print(suppres_levels)
 
 
 
@@ -805,20 +804,39 @@ class Tools_cl(object):
     def mat_hold(self):
         pass
 
-    def price_level_analysis(self):#how much cs at each price level
-        min = self.df.Low.min()
-        max = self.df.High.max()
+    def suppres_level_analysis(self,start=None,end=None,day_period=255,price_radius=10,value_difference=8):#support resistance levels
+        # need to add Volume
         step = 0.01
-        l = int(((max-min)+step)/step)
-        arr1 = arange(start=min,stop=max+step,step=step)
-        arr2 = zeros(l)
-        arr = vstack((arr1,arr2))
-        a=self.df.High[1]
-        print(arr1[1])
-        for i in range(l):
-            print(i)
-            if(arr1[i] == a):
-                print('fdf')
+        if(start!=None):
+            df_p = self.df[start:end]
+        else:
+            df_p = self.df[len(self.df)-day_period:]
+        min = df_p.Low.min().round(decimals=2)
+        max = df_p.High.max().round(decimals=2)
+        ln = int((max - min) / step)
+        Matrix = zeros(shape=(ln + 1, 3))
+        for y in range(ln + 1):
+            Matrix[y][0] = (min + y * step).round(decimals=2)
+        for i in range(len(df_p)):
+            stp = df_p.Low[i].round(decimals=2)
+            enp   = df_p.High[i].round(decimals=2)
+            while (stp <= enp):
+                ind = argwhere(Matrix == stp)
+                Matrix[ind[0][0]][1] += 1
+                stp = (stp + step).round(decimals=2)
+        for i in range(price_radius, len(Matrix) - price_radius, 1):
+            if (Matrix[i - price_radius:i + price_radius, 1].min() == Matrix[i, 1]):
+                if (Matrix[i - price_radius:i + price_radius, 1].max() - Matrix[i - price_radius:i + price_radius, 1].min() >= value_difference):
+                    Matrix[i][2] = i
+#        indexes =where(Matrix[:, 2] != 0)
+#        print(indexes[0][0])
+        return DataFrame(Matrix,columns=('SRla_price','SRla_value','SRla'))
+
+
+
+
+
+
 
 
 
