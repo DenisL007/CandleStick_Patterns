@@ -3,8 +3,8 @@ import os
 # pay attention for how the  import need to be done
 from candlestick_patterns.pull_data import ImportDataFrameGoogle
 from candlestick_patterns.pull_data import ImportDataFrameYahoo
-
 from candlestick_patterns.CountingTools import Tools_cl
+from Pin_bar_on_suppres_level_strategy import Pin_Level_st
 
 #TODO - GUI for browser
 #TODO - GUI(plot - bokeh) - for different trend definition "https://www.mql5.com/en/articles/136"
@@ -26,4 +26,5 @@ if __name__ == '__main__':
     list = "INTC"
     data_frame = ImportDataFrameYahoo(list)
     intc = Tools_cl(data_frame.il)
+    #Pin_Level_st(intc)
 

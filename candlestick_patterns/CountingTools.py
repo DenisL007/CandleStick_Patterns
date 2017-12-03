@@ -23,11 +23,14 @@ class Tools_cl(object):
  # calculate ZZ
         #self.zigzig_trend_detection(deviation=3,backstep=5,depth=5)
         #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_3%'].interpolate()])
-        suppres_levels = self.suppres_level_analysis()
+        #suppres_levels = self.suppres_level_analysis()
         #print(self.df)
-        self.df.to_csv('df.csv')
-        print(suppres_levels)
+        #self.df.to_csv('df.csv')
+        #print(suppres_levels)
 
+        self.zigzig(deviation = 8, backstep = 1, depth = 60,last=True)
+        self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_60_8%'].interpolate()])
+        print(self.df)
 
 
     def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False,volume_p=0):
@@ -804,7 +807,7 @@ class Tools_cl(object):
     def mat_hold(self):
         pass
 
-    def suppres_level_analysis(self,start=None,end=None,day_period=255,price_radius=10,value_difference=8):#support resistance levels
+    def support_resistance__level_analysis(self,start=None,end=None,day_period=255,price_radius=10,value_difference=8):#support resistance levels
         # need to add Volume
         step = 0.01
         if(start!=None):
@@ -831,14 +834,6 @@ class Tools_cl(object):
 #        indexes =where(Matrix[:, 2] != 0)
 #        print(indexes[0][0])
         return DataFrame(Matrix,columns=('SRla_price','SRla_value','SRla'))
-
-
-
-
-
-
-
-
 
     def candle_size_analysis(self):
         self.check_column_exist(candle_spec='True')
@@ -879,7 +874,7 @@ class Tools_cl(object):
             df_p = self.df[tmp_l:len(self.df)]
             return df_p.loc[df_p[source] == df_p[source].max()]
 
-    def support_resistance_level(self):
+    def daily_to_weekly(self):
         pass
 
     def plot_candles(sefl,pricing, title=None, volume_bars=False,o=False,t=False, ot=False,color_function=None, technicals=None):
@@ -1085,8 +1080,9 @@ class Tools_cl(object):
         #    plt.plot(segment.index, fit_val, color=fit_color)
         # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
 
-    def zigzig(self,deviation=5,backstep=1,depth=1):
-        zz_name ='zz_{deviation}%'.format(deviation=deviation)
+    def zigzig(self, deviation = 5, backstep = 1, depth = 1,last=False):
+        zz_name ='zz_{depth}_{deviation}%'.format(depth=depth,deviation=deviation)
+        zz_ext  ='zz_{depth}_{deviation}%_ext'.format(depth=depth,deviation=deviation)
         temp_array = zeros(len(self.df))
         pl=self.df.Low
         ph=self.df.High
@@ -1111,11 +1107,28 @@ class Tools_cl(object):
                 elp=lp
                 h, hp, l, lp = ph[i], i,pl[i], i
                 temp_array[elp]=-1
+            print(i)
+            print(h)
+            print(hp)
+            print(l)
+            print(lp)
+            print(ehf)
+            print(elf)
+        if(ehf):
+            temp_array[hp]=1
+        if(elf):
+            temp_array[lp]=-1
         self.df.loc[temp_array == 1 , zz_name] = self.df.High
         self.df.loc[temp_array == -1, zz_name] = self.df.Low
-        self.df.loc[temp_array == 1 , 'zz_extremum'] = 'High'
-        self.df.loc[temp_array == -1, 'zz_extremum'] = 'Low'
-
+        self.df.loc[temp_array == 1 , zz_ext] = 'High'
+        self.df.loc[temp_array == -1, zz_ext] = 'Low'
+        if(last):
+            if(ehf):
+                self.df.iloc[-1,self.df.colmuns.get_loc(zz_name)] = self.df.Low
+                self.df.set_values(self.df.index[1994], zz_ext , 'Last')
+            if(elf):
+                self.df.set_value(self.df.index[len(self.df)-1], zz_name, self.df.High)
+                self.df.set_value(self.df.index[len(self.df)-1], zz_ext , 'Last')
 
 
 
