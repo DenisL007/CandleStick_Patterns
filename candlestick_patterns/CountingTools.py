@@ -5,6 +5,9 @@ from numpy import arange,linspace, where,argwhere,diff,concatenate,savetxt,array
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
+#rolling_std - standart_deviation
+#rolling_corr - correlation
+#Scikit - machine learning
 
 
 class Tools_cl(object):
@@ -27,10 +30,11 @@ class Tools_cl(object):
         #print(self.df)
         #self.df.to_csv('df.csv')
         #print(suppres_levels)
-
-        self.zigzig(deviation = 8, backstep = 1, depth = 60,last=True)
-        self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_60_8%'].interpolate()])
-        print(self.df)
+        #self.support_resistance_level_analysis()
+        # self.zigzig(deviation = 4, backstep = 1, depth = 3,last=True)
+        #self.plot_candles(pricing=self.df, title='Intc', technicals=[self.df['zz_60_8%'].interpolate()])
+        #print(self.df)
+        # self.df.to_csv('df_zz.csv')
 
 
     def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False,volume_p=0):
@@ -63,21 +67,21 @@ class Tools_cl(object):
         self.df.loc[(self.df.Lower_shadow >= lower_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'Pin'
         if(engulf):
             indexes = self.df.loc[(self.df[pin_name] == 'Pin')].index.tolist()
-            for index in indexes:
-                i = self.df.index.get_loc(index)
+            for i in indexes:
                 if(self.df.Low[i-1] > self.df.Low[i]):
                     self.df.set_value(self.df.index[i], pin_name, 'PinE')
+        return pin_name
 
-    def inverted_pin_bar(self,upper_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True):
+    def inverted_pin_bar(self,upper_shadow_size=0.55,body_size=0.26,small_body=False,engulf=False):
         self.check_column_exist(candle_spec='True')
         pin_name = 'Inverted_pin_{lss}'.format(lss=upper_shadow_size)
         self.df.loc[(self.df.Upper_shadow >= upper_shadow_size * self.df.Candle) & (self.df.Body <= body_size * self.df.Candle) & (~small_body | (self.df.Long_Short_B == 'Short')), pin_name] = 'IPin'
         if (engulf):
             indexes = self.df.loc[(self.df[pin_name] == 'IPin')].index.tolist()
-            for index in indexes:
-                i = self.df.index.get_loc(index)
+            for i in indexes:
                 if (self.df.High[i - 1] > self.df.High[i]):
                     self.df.set_value(self.df.index[i], pin_name, 'IPinE')
+        return pin_name
 
     def ma_linear_regression(self,lr_period=5,ma_period=5,ma_source='Close'):
         ma_name = 'MA_{source}_{period1}'.format(period1=ma_period,source=ma_source)
@@ -807,33 +811,86 @@ class Tools_cl(object):
     def mat_hold(self):
         pass
 
-    def support_resistance__level_analysis(self,start=None,end=None,day_period=255,price_radius=10,value_difference=8):#support resistance levels
+    def price_count(self,start=None,end=None,day_period=0):#
         # need to add Volume
         step = 0.01
         if(start!=None):
             df_p = self.df[start:end]
-        else:
+        if(day_period != 0):
             df_p = self.df[len(self.df)-day_period:]
+        else:
+            df_p = self.df
         min = df_p.Low.min().round(decimals=2)
         max = df_p.High.max().round(decimals=2)
-        ln = int((max - min) / step)
-        Matrix = zeros(shape=(ln + 1, 3))
-        for y in range(ln + 1):
-            Matrix[y][0] = (min + y * step).round(decimals=2)
+        ln = int((max - min) / step)+1
+        arr = zeros(shape=(ln,2))
+        for y in range(ln ):
+            arr[y][0] = (min + y * step).round(decimals=2)
         for i in range(len(df_p)):
             stp = df_p.Low[i].round(decimals=2)
             enp   = df_p.High[i].round(decimals=2)
             while (stp <= enp):
-                ind = argwhere(Matrix == stp)
-                Matrix[ind[0][0]][1] += 1
+                ind = argwhere(arr[:,0] == stp)
+                arr[ind[0][0]][1] += 1
                 stp = (stp + step).round(decimals=2)
-        for i in range(price_radius, len(Matrix) - price_radius, 1):
-            if (Matrix[i - price_radius:i + price_radius, 1].min() == Matrix[i, 1]):
-                if (Matrix[i - price_radius:i + price_radius, 1].max() - Matrix[i - price_radius:i + price_radius, 1].min() >= value_difference):
-                    Matrix[i][2] = i
-#        indexes =where(Matrix[:, 2] != 0)
-#        print(indexes[0][0])
-        return DataFrame(Matrix,columns=('SRla_price','SRla_value','SRla'))
+        return DataFrame(arr, columns=('Price', 'Value'))
+
+    def support_resistance(self,price_radius=10,value_diff=6,start=None,end=None,day_period=0):
+        pc = self.price_count(start=start,end=end,day_period=day_period)
+        pc['Level'] = None
+        for i in range(price_radius, len(pc) - price_radius, 1):
+            if((pc.loc[i - price_radius:i + price_radius, ['Value']].min(axis=0)).Value == pc.Value[i]):
+                if(((pc.loc[i - price_radius:i + price_radius, ['Value']].max(axis=0)).Value - (pc.loc[i - price_radius:i + price_radius, ['Value']].min(axis=0)).Value) >= value_diff) :
+                    pc.set_value(pc.index[i], 'Level', 'yes')
+        pc = pc.loc[pc['Level'] == 'yes']
+        pc = pc.reset_index(drop=True)
+        i,j = 0,1
+        while (j < len(pc)):
+            if((pc.Price[j] - pc.Price[i]) <= 0.10):
+                if(pc.Value[i] <= pc.Value[j]):
+                    pc.set_value(pc.index[j], 'Level', 'no')
+                    j=j+1
+                else:
+                    pc.set_value(pc.index[i], 'Level', 'no')
+                    i=j
+                    j=j+1
+            else:
+                if(i+1 == j):
+                    i=i+1
+                    j=j+1
+                else:
+                    i=j
+                    j=j+1
+        pc = pc.loc[pc['Level'] == 'yes']
+        pc = pc.reset_index(drop=True)
+        return pc
+
+    def supres_3(self,price_radius1=10,value_diff1=6,price_radius2=25,value_diff2=6,price_radius3=50,value_diff3=6,start=None,end=None,day_period=0):
+        sp1 = self.support_resistance(price_radius=price_radius1,value_diff=value_diff1,start=start,end=end,day_period=day_period)
+        sp2 = self.support_resistance(price_radius=price_radius2,value_diff=value_diff2,start=start,end=end,day_period=day_period)
+        sp3 = self.support_resistance(price_radius=price_radius3,value_diff=value_diff3,start=start,end=end,day_period=day_period)
+        sp = concat([sp1,sp2,sp3], ignore_index=True)
+        sp = (sp.sort_values('Price')).reset_index(drop=True)
+        i,j = 0,1
+        while (j < len(sp)):
+            if((sp.Price[j] - sp.Price[i]) <= 0.10):
+                if(sp.Value[i] <= sp.Value[j]):
+                    sp.set_value(sp.index[j], 'Level', 'no')
+                    j=j+1
+                else:
+                    sp.set_value(sp.index[i], 'Level', 'no')
+                    i=j
+                    j=j+1
+            else:
+                if(i+1 == j):
+                    i=i+1
+                    j=j+1
+                else:
+                    i=j
+                    j=j+1
+        sp = sp.loc[sp['Level'] == 'yes']
+        sp = sp.reset_index(drop=True)
+        return sp
 
     def candle_size_analysis(self):
         self.check_column_exist(candle_spec='True')
@@ -843,10 +900,12 @@ class Tools_cl(object):
     def local_min(self,source='Close',period=255):
         name = 'MIN_{period}_{source}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).min()
+        return name
 
     def local_max(self,source='Close',period=255):
         name = 'MAX_{period}_{source}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).max()
+        return name
 
     def local_min_row(self,start=None,end=None,source='Close',period=255):
         if(start!=None):
@@ -1080,9 +1139,180 @@ class Tools_cl(object):
         #    plt.plot(segment.index, fit_val, color=fit_color)
         # omcrtd  / min_days_trend - minimum days with specific trend direction to count as trend change
 
-    def zigzig(self, deviation = 5, backstep = 1, depth = 1,last=False):
+    def zigzig(self, deviation = 5, backstep = 1, depth = 1,last=True):
         zz_name ='zz_{depth}_{deviation}%'.format(depth=depth,deviation=deviation)
         zz_ext  ='zz_{depth}_{deviation}%_ext'.format(depth=depth,deviation=deviation)
+        zz_trend  ='zz_{depth}_{deviation}%_trend'.format(depth=depth,deviation=deviation)
+        temp_array = zeros(len(self.df))
+        pl=self.df.Low
+        ph=self.df.High
+        dev=deviation/100
+        H,L,HP,LP = ph[0],pl[0],0,0
+        C, CP, CH, CL,CF = 0,0,0,0,0
+        regular = False
+        for i in range(1,len(self.df)):
+            # print("i-",i)
+            # print("ph-",ph[i],"pl-",pl[i])
+            if(CH):
+                if( (ph[i] >= (1+dev)*L) & ((i - LP >= backstep) & (i - CP >= depth) | ~regular) ):
+                    # print("5")
+                    if(regular):
+                        # E , EP, EF = C, CP, CF
+                        # print("E-", E, "EP-", EP, "EF-", EF)
+                        temp_array[CP] = CF
+                    C , CP, CL, CH, CF = L, LP, 1, 0, -1
+                    H,L,HP,LP = ph[i],pl[i],i,i
+                    regular = True
+            else:
+                if( (pl[i] <= (1-dev)*H ) & ((i - HP >= backstep) & (i - CP >= depth) | ~regular)  ):
+                    # print("6")
+                    if (regular):
+                        # E , EP, EF = C, CP, CF
+                        # print("E-", E, "EP-", EP, "EF-", EF)
+                        temp_array[CP] = CF
+                    C , CP, CH, CL, CF = H, HP, 1, 0, 1
+                    H, L, HP, LP = ph[i], pl[i], i, i
+                    regular = True
+            if(ph[i] >= H):
+                H,HP = ph[i],i
+                # print("1")
+            if(pl[i] <=L):
+                L,LP = pl[i],i
+                # print("2")
+            if((ph[i] >= C) & CH & (i - HP >= backstep) & (i - CP >= depth)  & regular ):#& (~(ph[i] >= (1+dev)*L ))):
+                C, CP = ph[i], i
+                # print("3")
+            if((pl[i] <= C) & CL & (i - HP >= backstep) & (i - CP >= depth) & regular ):#& (~(pl[i] <= (1-dev)*H ))):
+                C, CP = pl[i], i
+                # print("4")
+            # print("H-",H,"L-", L,"HP-", HP,"LP-", LP)
+            # print("C-",C,"CP-",CP,"CF-",CF,"CH-",CH,"CL-",CL)
+            # print("")
+        temp_array[CP] = CF
+        self.df.loc[temp_array == 1 , zz_name] = self.df.High
+        self.df.loc[temp_array == -1, zz_name] = self.df.Low
+        self.df.loc[temp_array == 1 , zz_ext] = 'High'
+        self.df.loc[temp_array == -1, zz_ext] = 'Low'
+        if(last & ~((self.df.loc[self.df.index[-1],zz_ext] =='High') | (self.df.loc[self.df.index[-1],zz_ext] =='Low'))):
+            if(CF == 1):
+                self.df.loc[self.df.index[-1],zz_name] = self.df.loc[self.df.index[-1],'High']
+                self.df.loc[self.df.index[-1], zz_ext] = "Last"
+            if(CF == -1):
+                self.df.loc[self.df.index[-1],zz_name] = self.df.loc[self.df.index[-1],'Low']
+                self.df.loc[self.df.index[-1], zz_ext] = "Last"
+        p = argwhere(temp_array != 0)
+        if(temp_array[p[0]] == 1):
+            trend = 1
+        else:
+            trend = -1
+        for i in range(len(self.df)):
+            if (temp_array[i] != 0):
+                trend = (-1) * trend
+            else:
+                temp_array[i] = trend
+        self.df.loc[temp_array == 1, zz_trend] = '1'
+        self.df.loc[temp_array == -1, zz_trend] = '-1'
+        return zz_name
+
+    def zigzig1(self, deviation = 5, backstep = 1, depth = 1,last=False):
+        zz_name ='zz_{depth}_{deviation}%'.format(depth=depth,deviation=deviation)
+        zz_ext  ='zz_{depth}_{deviation}%_ext'.format(depth=depth,deviation=deviation)
+        zz_trend  ='zz_{depth}_{deviation}%_trend'.format(depth=depth,deviation=deviation)
+        temp_array = zeros(len(self.df))
+        pl=self.df.Low
+        ph=self.df.High
+        dev=deviation/100
+        L1, H1, LP1, HP1=pl[0],ph[0],0,0
+        L2, H2, LP2, HP2=pl[0],ph[0],0,0
+        C1, CP1, CH1, CL1, CF1 = 0,0,0,0,0
+        C2, CP2, CH2, CL2, CF2 = 0,0,1,1,0
+        start, find =False, 0
+        for i in range(1,len(self.df)):
+            print("")
+            print("------------------//////")
+            print("i-",i,"ph-",ph[i],"pl-",pl[i])
+            # print("------------------")
+            # if(i>10):
+                # print("C1-", C1, "CP1-", CP1, "CH1-", CH1, "CL1-", CL1, "CF1-", CF1)
+                # print("C2-", C2, "CP2-", CP2, "CH2-", CH2, "CL2-", CL2, "CF2-", CF2)
+            print("find-",find)
+            if(find == 0):
+                if(ph[i] >= H1):
+                    H1, HP1 = ph[i], i
+                    # print("H1-",H1,"HP1-",HP1)
+                if(pl[i] <= L1):
+                    L1, LP1 = pl[i], i
+                    # print("L1-",L1,"LP1-",LP1)
+                if(start):
+                    if ((ph[i] >= C2) & CH2):
+                        C2, CP2 = ph[i], i
+                    # print("C2-",C2,"CP2-",CP2,"CH2-",CH2,"CL2-",CL2,"CF2-",CF2)
+                    if ((pl[i] <= C2) & CL2):
+                        C2, CP2 = pl[i], i
+                    # print("C2-", C2, "CP2-", CP2, "CH2-", CH2, "CL2-", CL2, "CF2-", CF2)
+                if( ((1-dev)*H1 >= pl[i]) & ((i - HP1) >= backstep) & (((i - CP2) >= depth) | ~start ) & CL2 ):
+                    C1, CP1, CH1, CL1, CF1= H1, HP1, 1, 0, 1
+                    H2, HP2, L2, LP2, find = ph[i], i, pl[i], i, 1
+                    if(start):
+                        temp_array[CP2] = CF2
+                        E, EP, EF = C2, CP2, CF2
+                        print("E-", E, "EP-", EP, "EF-", EF)
+                    print("----------------1")
+                    # print("C1-",C1,"CP1-",CP1,"CH1-",CH1,"CL1-",CL1,"CF1-",CF1)
+                if( ((1+dev)*L1 <= ph[i]) & ((i - LP1) >= backstep) & (((i - CP2) >= depth) | ~start ) & CH2 ):
+                    C1, CP1, CH1, CL1, CF1= L1, LP1, 0, 1, -1
+                    H2, HP2, L2, LP2, find = ph[i], i, pl[i], i, 1
+                    if(start):
+                        temp_array[CP2] = CF2
+                        E, EP, EF = C2, CP2, CF2
+                        print("E-", E, "EP-", EP, "EF-", EF)
+                    print("----------------2")
+                    # print("C1-",C1,"CP1-",CP1,"CH1-",CH1,"CL1-",CL1,"CF1-",CF1)
+            print("find-",find)
+            if(find == 1):
+                start = True
+                if(ph[i] >= H2):
+                    H2, HP2 = ph[i], i
+                    # print("H2-",H2,"HP2-",HP2)
+                if (pl[i] <= L2):
+                    L2, LP2 = pl[i], i
+                    # print("L2-",L2,"LP2-",LP2)
+                if ((ph[i] >= C1) & CH1):
+                    C1, CP1 = ph[i], i
+                    # print("C1-", C1, "CP1-", CP1, "CH1-", CH1, "CL1-", CL1, "CF1-", CF1)
+                if ((pl[i] <= C1) & CL1):
+                    C1, CP1 = pl[i], i
+                    # print("C1-", C1, "CP1-", CP1, "CH1-", CH1, "CL1-", CL1, "CF1-", CF1)
+                if( ((1-dev)*H2 >= pl[i]) & ((i - HP2) >= backstep) & ((i - CP1) >= depth) & CL1 ):
+                    C2, CP2, CH2, CL2, CF2= H2, HP2, 1, 0, 1
+                    H1, HP1, L1, LP1, find = ph[i], i, pl[i], i, 0
+                    temp_array[CP1] = CF1
+                    E, EP, EF = C1, CP1, CF1
+                    print("----------------3")
+                    # print("C2-",C2,"CP2-",CP2,"CH2-",CH2,"CL2-",CL2,"CF2-",CF2)
+                    print("E-",E,"EP-",EP,"EF-",EF)
+                if( ((1+dev)*L2 <= ph[i]) & ((i - LP2) >= backstep) & ((i - CP1) >= depth) & CH1 ):
+                    C2, CP2, CH2, CL2, CF2= H2, HP2, 0, 1, -1
+                    H1, HP1, L1, LP1, find = ph[i], i, pl[i], i, 0
+                    temp_array[CP1] = CF1
+                    E, EP, EF = C1, CP1, CF1
+                    print("----------------4")
+                    # print("C2-",C2,"CP2-",CP2,"CH2-",CH2,"CL2-",CL2,"CF2-",CF2)
+                    print("E-",E,"EP-",EP,"EF-",EF)
+            print("H1-",H1,"HP1-",HP1,"L1-",L1,"LP1-",LP1)
+            print("H2-",H2,"HP2-",HP2,"L2-",L2,"LP2-",LP2)
+            print("C1-",C1,"CP1-",CP1,"CH1-",CH1,"CL1-",CL1,"CF1-",CF1)
+            print("C2-",C2,"CP2-",CP2,"CH2-",CH2,"CL2-",CL2,"CF2-",CF2)
+
+        self.df.loc[temp_array == 1 , zz_name] = self.df.High
+        self.df.loc[temp_array == -1, zz_name] = self.df.Low
+        self.df.loc[temp_array == 1 , zz_ext] = 'High'
+        self.df.loc[temp_array == -1, zz_ext] = 'Low'
+
+    def zigzig_old(self, deviation = 5, backstep = 1, depth = 1,last=False):
+        zz_name ='zz_{depth}_{deviation}%'.format(depth=depth,deviation=deviation)
+        zz_ext  ='zz_{depth}_{deviation}%_ext'.format(depth=depth,deviation=deviation)
+        zz_trend  ='zz_{depth}_{deviation}%_trend'.format(depth=depth,deviation=deviation)
         temp_array = zeros(len(self.df))
         pl=self.df.Low
         ph=self.df.High
@@ -1107,29 +1337,37 @@ class Tools_cl(object):
                 elp=lp
                 h, hp, l, lp = ph[i], i,pl[i], i
                 temp_array[elp]=-1
-            print(i)
-            print(h)
-            print(hp)
-            print(l)
-            print(lp)
-            print(ehf)
-            print(elf)
-        if(ehf):
-            temp_array[hp]=1
-        if(elf):
-            temp_array[lp]=-1
         self.df.loc[temp_array == 1 , zz_name] = self.df.High
         self.df.loc[temp_array == -1, zz_name] = self.df.Low
         self.df.loc[temp_array == 1 , zz_ext] = 'High'
         self.df.loc[temp_array == -1, zz_ext] = 'Low'
-        if(last):
+        if(last & ~((self.df.loc[self.df.index[-1],zz_ext] =='High') | (self.df.loc[self.df.index[-1],zz_ext] =='Low'))):
             if(ehf):
-                self.df.iloc[-1,self.df.colmuns.get_loc(zz_name)] = self.df.Low
-                self.df.set_values(self.df.index[1994], zz_ext , 'Last')
+                self.df.loc[self.df.index[-1],zz_name] = self.df.loc[self.df.index[-1],'High']
+                self.df.loc[self.df.index[-1], zz_ext] = "Last"
             if(elf):
-                self.df.set_value(self.df.index[len(self.df)-1], zz_name, self.df.High)
-                self.df.set_value(self.df.index[len(self.df)-1], zz_ext , 'Last')
+                self.df.loc[self.df.index[-1],zz_name] = self.df.loc[self.df.index[-1],'Low']
+                self.df.loc[self.df.index[-1], zz_ext] = "Last"
+        p = argwhere(temp_array != 0)
+        if(temp_array[p[0]] == 1):
+            trend = 1
+        else:
+            trend = -1
+        for i in range(len(self.df)):
+            if (temp_array[i] != 0):
+                trend = (-1) * trend
+            else:
+                temp_array[i] = trend
+        self.df.loc[temp_array == 1, zz_trend] = '1'
+        self.df.loc[temp_array == -1, zz_trend] = '-1'
+        return zz_name
 
+#            pr = (self.df.loc[self.df[zz_ext].notnull()]).reset_index(drop=True)
+#            if (pr[zz_name][len(pr) - 1] >= pr[zz_name][len(pr) - 1]):
+#                trend = 1
+#            else:
+#                trend = -1
+#            return trend
 
 
 

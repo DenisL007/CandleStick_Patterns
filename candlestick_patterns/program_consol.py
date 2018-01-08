@@ -1,5 +1,5 @@
 import os
-
+from pandas import DataFrame
 # pay attention for how the  import need to be done
 from candlestick_patterns.pull_data import ImportDataFrameGoogle
 from candlestick_patterns.pull_data import ImportDataFrameYahoo
@@ -19,12 +19,14 @@ if __name__ == '__main__':
 
     os.system("cls")
     #
-    for key in stock_names:
-        print(stock_names[key])
+    #for key in stock_names:
+    #    print(stock_names[key])
     print('\nWELCOME TO THE PROGRAM \n')
 
     list = "INTC"
-    data_frame = ImportDataFrameYahoo(list)
-    intc = Tools_cl(data_frame.il)
-    #Pin_Level_st(intc)
+    #data_frame = ImportDataFrameYahoo(list)
+    #intc = Tools_cl(data_frame.il)
+
+    intc = Tools_cl(DataFrame.from_csv('df_ref.csv').reset_index())
+    Pin_Level_st(intc)
 
