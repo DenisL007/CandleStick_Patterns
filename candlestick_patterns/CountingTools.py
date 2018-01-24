@@ -36,6 +36,8 @@ class Tools_cl(object):
         #print(self.df)
         # self.df.to_csv('df_zz.csv')
 
+    def save_df(self,name="df.csv"):
+        self.df.to_csv(name)
 
     def check_column_exist(self,ma_p=0,ma_s='None',candle_spec=False,lr_p=0,lr_ma_p=0,lr_ma_s='Close',doji=False,volume_p=0):
         if(ma_p != 0):
@@ -60,6 +62,10 @@ class Tools_cl(object):
     def moving_average(self,period=1,source='Close'):
         name = 'MA_{source}_{period}'.format(period=period,source=source)
         self.df[name] = Series.rolling(self.df[source], window=period, min_periods=period).mean()
+        if(source == 'Volume'):
+            name_diff = 'MA_{source}_{period}_diff'.format(period=period,source=source)
+            self.df[name_diff] = where(self.df.Volume > self.df[name], 1, 0)
+        return name
 
     def pin_bar(self,lower_shadow_size=0.55,body_size=0.26,small_body=False,engulf=True):
         self.check_column_exist(candle_spec='True')
@@ -1151,43 +1157,28 @@ class Tools_cl(object):
         C, CP, CH, CL,CF = 0,0,0,0,0
         regular = False
         for i in range(1,len(self.df)):
-            # print("i-",i)
-            # print("ph-",ph[i],"pl-",pl[i])
             if(CH):
                 if( (ph[i] >= (1+dev)*L) & ((i - LP >= backstep) & (i - CP >= depth) | ~regular) ):
-                    # print("5")
                     if(regular):
-                        # E , EP, EF = C, CP, CF
-                        # print("E-", E, "EP-", EP, "EF-", EF)
                         temp_array[CP] = CF
                     C , CP, CL, CH, CF = L, LP, 1, 0, -1
                     H,L,HP,LP = ph[i],pl[i],i,i
                     regular = True
             else:
                 if( (pl[i] <= (1-dev)*H ) & ((i - HP >= backstep) & (i - CP >= depth) | ~regular)  ):
-                    # print("6")
                     if (regular):
-                        # E , EP, EF = C, CP, CF
-                        # print("E-", E, "EP-", EP, "EF-", EF)
                         temp_array[CP] = CF
                     C , CP, CH, CL, CF = H, HP, 1, 0, 1
                     H, L, HP, LP = ph[i], pl[i], i, i
                     regular = True
             if(ph[i] >= H):
                 H,HP = ph[i],i
-                # print("1")
             if(pl[i] <=L):
                 L,LP = pl[i],i
-                # print("2")
             if((ph[i] >= C) & CH & (i - HP >= backstep) & (i - CP >= depth)  & regular ):#& (~(ph[i] >= (1+dev)*L ))):
                 C, CP = ph[i], i
-                # print("3")
             if((pl[i] <= C) & CL & (i - HP >= backstep) & (i - CP >= depth) & regular ):#& (~(pl[i] <= (1-dev)*H ))):
                 C, CP = pl[i], i
-                # print("4")
-            # print("H-",H,"L-", L,"HP-", HP,"LP-", LP)
-            # print("C-",C,"CP-",CP,"CF-",CF,"CH-",CH,"CL-",CL)
-            # print("")
         temp_array[CP] = CF
         self.df.loc[temp_array == 1 , zz_name] = self.df.High
         self.df.loc[temp_array == -1, zz_name] = self.df.Low
@@ -1362,13 +1353,7 @@ class Tools_cl(object):
         self.df.loc[temp_array == -1, zz_trend] = '-1'
         return zz_name
 
-#            pr = (self.df.loc[self.df[zz_ext].notnull()]).reset_index(drop=True)
-#            if (pr[zz_name][len(pr) - 1] >= pr[zz_name][len(pr) - 1]):
-#                trend = 1
-#            else:
-#                trend = -1
-#            return trend
-
+#
 
 
 '''    def umbrella_candle_old (self,upper_shadow_size_parameter=0.2,body_size_parameter = 0.1):
