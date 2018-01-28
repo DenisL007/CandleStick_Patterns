@@ -23,10 +23,10 @@ if __name__ == '__main__':
     #    print(stock_names[key])
     print('\nWELCOME TO THE PROGRAM \n')
 
-    list = "INTC"
-    #data_frame = ImportDataFrameYahoo(list)
-    #intc = Tools_cl(data_frame.il)
+    # list = "INTC"
+    # data_frame = ImportDataFrameYahoo(list)
+    # intc = Tools_cl(data_frame.il,name=list)
 
-    intc = Tools_cl(DataFrame.from_csv('df_ref.csv').reset_index())
+    intc = Tools_cl(DataFrame.from_csv('pin_bar_on_up_trend_1.csv').reset_index())
     Pin_Level_st(intc)
 
